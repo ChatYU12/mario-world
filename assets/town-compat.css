@@ -1,0 +1,30 @@
+/* Keep the town controls available alongside the optional Apple page layer.
+   A solid scene HUD avoids re-filtering animated WebGL pixels every frame. */
+.exhibit .world-pins .pin,
+.exhibit .map-toolbar,
+.exhibit .town-interface .world-quality,
+.exhibit .town-interface .town-directory,
+.exhibit .town-interface .business-panel{
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+}
+@media(max-width:560px){
+  .hero-exhibit .town-interface .town-directory,
+  .explore-main .town-interface .town-directory{display:block}
+  .hero-exhibit .town-interface .world-quality,
+  .explore-main .town-interface .world-quality{display:flex}
+  .explore-main:not(.is-map) .town-directory{
+    left:10px;right:auto;bottom:8px;width:174px;max-height:270px
+  }
+  .explore-main:not(.is-map) .world-quality{right:10px;bottom:8px}
+  .explore-main .gesture-hint{display:none}
+  .explore-main.is-map{
+    display:block;height:calc(100svh - var(--header-h,48px));min-height:0;padding:0
+  }
+  .explore-main.is-map>.exhibit{
+    position:relative;inset:auto;width:100%;height:calc(100svh - var(--header-h,48px));
+    min-height:400px;max-height:none;margin:0
+  }
+  .hero-exhibit .town-directory{max-height:235px}
+  .business-panel .close-button{min-width:44px;min-height:44px}
+}

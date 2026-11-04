@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN" data-page="explore">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>星球探索 · 马里奥世界</title>
+<meta name="description" content="从城堡、工坊与港口出发，探索智能协作、业务自动化和数据连接。建筑与文字入口提供相同的能力介绍。">
+<meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23dc6982'/%3E%3Cpath d='M8 31V17h6v-6h5v6h3v-6h5v6h5v14H8z' fill='%23fffdf8'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css?v=20261104-environment1">
+<link rel="stylesheet" href="assets/apple.css?v=20261104-environment1">
+<link rel="stylesheet" href="assets/town-compat.css?v=20261104-environment1">
+<link rel="stylesheet" href="assets/environment.css?v=20261104-environment1">
+<script>document.documentElement.classList.add('js-reveal');</script>
+</head>
+<body class="explore-page">
+<a class="skip-link" href="#explore-guide">跳到能力入口</a>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute;overflow:hidden"><defs><symbol id="castle-icon" viewBox="0 0 40 44"><path d="M5 40V19h7v-7h5v7h6v-7h5v7h7v21H5Z" fill="currentColor"/><path d="m3 19 5-10 6 10M14 12l6-11 6 11M26 19l6-10 6 10" fill="currentColor"/><path d="M16 40V29a4 4 0 0 1 8 0v11M9 23h3v5H9m19-5h3v5h-3M18 16h4v6h-4" fill="#fffdf8"/></symbol></defs></svg>
+<header class="site-header explore-header" id="site-header">
+<div class="wrap header-inner">
+<a class="brand" href="index.html" aria-label="返回马里奥世界首页"><svg class="brand-icon" aria-hidden="true"><use href="#castle-icon"/></svg><span><span class="brand-name">MARIO WORLD</span><span class="brand-caption">马里奥世界</span></span></a>
+<nav class="site-nav" aria-label="主导航"><a class="nav-optional" href="index.html#capabilities">阅读能力介绍</a><a href="index.html">返回首页</a><a class="nav-contact" href="index.html#contact">交流需求</a></nav>
+</div>
+</header>
+<main class="explore-main" id="explore-main">
+<div class="explore-intro"><h1>从星球，走进大陆。</h1><p>点击地域，走进有居民的小镇。<br>沿路探索建筑与六项本地业务演示。</p></div>
+<div class="exhibit" id="planet-exhibit"><canvas class="world-canvas" id="stage" aria-label="星球总览：拖动旋转，点击地域进入连续地图"></canvas><div class="world-loading" id="world-loading" role="status">正在搭建星球…</div><div class="world-pins" id="pins"></div><p class="gesture-hint" id="globe-hint">拖动旋转，点击地域进入地图</p><div class="world-fallback" id="world-fallback" hidden><svg aria-hidden="true"><use href="#castle-icon"/></svg><strong>能力探索仍然可用</strong><p>3D 场景暂未启动。选择三个文字入口，仍可阅读能力介绍。</p></div></div>
+<nav class="explore-guide" id="explore-guide" aria-label="能力方向"><span class="small-badge">选择入口，进入地图</span><div class="explore-entries"><button type="button" data-capability="collaboration" aria-pressed="false" style="--tint:#b4647a"><span><strong>智能协作</strong><span>城堡与村落</span></span><span class="entry-dot" aria-hidden="true"></span></button><button type="button" data-capability="automation" aria-pressed="false" style="--tint:#9c742f"><span><strong>业务自动化</strong><span>工坊与道路</span></span><span class="entry-dot" aria-hidden="true"></span></button><button type="button" data-capability="connection" aria-pressed="false" style="--tint:#2f6f8c"><span><strong>数据连接</strong><span>港口与水路</span></span><span class="entry-dot" aria-hidden="true"></span></button></div></nav>
+<p class="explore-footnote">能力方向展示<br>应用场景为示意</p>
+<div class="explore-controls" aria-label="星球控制"><button id="overview-button" type="button">返回星球总览</button><button id="rotate-button" type="button" aria-pressed="false">自动旋转</button></div>
+<aside class="capability-detail" id="detail" aria-labelledby="detail-title" hidden>
+<div class="detail-top"><span class="small-badge">应用示意</span><button class="close-button" id="detail-close" type="button" aria-label="关闭介绍，继续地图探索">×</button></div>
+<h2 id="detail-title"></h2><p class="detail-scene" id="detail-scene"></p><p class="detail-lede" id="detail-lede"></p>
+<dl><div class="story-row"><dt>业务问题</dt><dd id="detail-problem"></dd></div><div class="story-row"><dt>解决过程</dt><dd id="detail-process"></dd></div><div class="story-row"><dt>预期价值</dt><dd id="detail-value"></dd></div></dl>
+<div class="detail-actions"><a class="button" id="detail-contact" href="index.html#contact">交流需求</a><a class="text-link" href="index.html#capabilities">阅读全部方向</a></div>
+<p class="scope-note">用于说明能力方向，具体功能与交付范围需进一步沟通。</p>
+</aside>
+</main>
+<p class="sr-only" id="live" role="status" aria-live="polite"></p>
+<noscript><p style="padding:20px">星球探索需要 JavaScript。你也可以<a href="index.html#capabilities">回到首页阅读三个能力方向</a>。</p></noscript>
+<script src="assets/nodes.js?v=20261104-environment1"></script>
+<script src="assets/three.min.js?v=20261104-environment1"></script>
+<script src="assets/imported-models.js?v=20261104-environment1"></script>
+<script src="assets/world-models.js?v=20261104-environment1"></script>
+<script src="assets/world-geography.js?v=20261104-environment1"></script>
+<script src="assets/story-world.js?v=20261104-environment1"></script>
+<script src="assets/connected-map.js?v=20261104-environment1"></script>
+<script src="assets/demo-businesses.js?v=20261104-environment1"></script>
+<script src="assets/world-enrichment.js?v=20261104-environment1"></script>
+<script src="assets/render-quality.js?v=20261104-environment1"></script>
+<script src="assets/world-environment.js?v=20261104-environment1"></script>
+<script src="assets/planet3d.js?v=20261104-environment1"></script>
+<script src="assets/town-ui.js?v=20261104-environment1"></script>
+<script src="assets/environment-ui.js?v=20261104-environment1"></script>
+<script src="assets/site.js?v=20261104-environment1"></script>
+<script src="assets/apple-motion.js?v=20261104-environment1"></script>
+</body>
+</html>

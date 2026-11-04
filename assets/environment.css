@@ -1,0 +1,43 @@
+/* Calm controls over a natural scene; surfaces stay opaque over animated water. */
+.world-transition-frame{position:absolute;inset:0;display:block;width:100%;height:100%;pointer-events:none;z-index:1;object-fit:fill}
+.world-transition-frame[hidden]{display:none}
+.world-environment-controls{position:absolute;z-index:10;right:20px;top:78px;width:190px;font-family:var(--font-body,-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif);font-size:12px;color:#254b45;background:#fff;border:1px solid #dde4e2;border-radius:14px;box-shadow:0 6px 20px rgb(24 51 58 / .07);pointer-events:auto}
+.world-environment-controls[hidden]{display:none}
+.world-environment-controls summary{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:44px;padding:10px 13px;cursor:pointer;list-style:none;font-weight:600}
+.world-environment-controls summary::-webkit-details-marker{display:none}
+.world-environment-controls summary small{font-size:11px;font-weight:400;color:#687d78}
+.world-environment-controls[open]{width:260px;max-width:calc(100% - 24px)}
+.world-environment-controls fieldset{border:0;border-top:1px solid #edf0ee;padding:15px;margin:0;min-width:0}
+.environment-time{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.environment-time output{font-variant-numeric:tabular-nums;font-size:13px;color:#415e60}
+.world-environment-controls input[type=range]{display:block;width:100%;min-height:36px;accent-color:#48857b;margin:0 0 10px;cursor:pointer}
+.environment-weather{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.environment-weather select{min-height:36px;min-width:120px;border:1px solid #d8e2de;border-radius:8px;padding:6px 9px;font:inherit;color:#254b45;background:#f8faf9}
+.environment-check{display:flex;align-items:center;gap:9px;min-height:38px;cursor:pointer}
+.environment-check input{width:17px;height:17px;accent-color:#48857b;flex-shrink:0}
+.environment-coast{width:100%;min-height:44px;margin-top:10px;border:1px solid #d2dfdb;border-radius:9px;background:#f0f5f2;color:#285c50;font:inherit;cursor:pointer}
+.environment-coast:hover{background:#e3eeea}
+.environment-coast:focus-visible{outline:2px solid #4d9187;outline-offset:3px}
+.environment-note{font-size:10px;line-height:1.65;color:#73847e;margin:10px 0 0}
+.world-environment-controls :is(summary,input,select):focus-visible{outline:2px solid #4d9187;outline-offset:3px}
+.has-business .world-environment-controls,.has-selection .world-environment-controls{visibility:hidden}
+.hero-exhibit .world-environment-controls{top:14px;right:12px}
+.explore-main:not(.is-map) .explore-footnote{top:auto;bottom:78px;right:20px}
+.explore-main.is-descending .world-pins{opacity:0;pointer-events:none}
+.explore-main.is-descending .explore-guide,.explore-main.is-descending .explore-footnote{opacity:0;pointer-events:none}
+@media(min-width:1000px){.explore-main.is-map .map-toolbar{right:auto;left:20px;width:min(680px,calc(100% - 310px));margin:0}}
+@media(max-width:999px){
+ .world-environment-controls{top:auto;bottom:76px;right:12px;width:178px}
+ .hero-exhibit .world-environment-controls{top:12px;right:12px;bottom:auto}
+}
+@media(max-width:560px){
+ .world-environment-controls{right:10px;top:12px;bottom:auto;width:158px;font-size:11px;border-radius:12px}
+ .world-environment-controls summary{min-height:44px;padding:9px 11px;gap:8px}
+ .world-environment-controls[open]{width:246px;max-height:calc(100% - 90px);overflow:auto}
+ .explore-main.is-map .world-environment-controls{top:auto;bottom:62px;right:10px}
+ .world-environment-controls input[type=range],.environment-check,.environment-weather select{min-height:44px}
+ .environment-weather select{min-width:130px}
+ .hero-exhibit .world-environment-controls{top:10px;right:10px;width:158px}
+ .hero-exhibit .world-environment-controls[open]{width:246px}
+}
+@media(prefers-reduced-motion:reduce){.world-transition-frame{display:none}.world-environment-controls{scroll-behavior:auto}}

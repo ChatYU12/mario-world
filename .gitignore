@@ -1,0 +1,7 @@
+.DS_Store
+.env
+.env.*
+.preview/
+node_modules/
+*.log
+.deploy-verification.json

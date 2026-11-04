@@ -1,0 +1,547 @@
+{
+  "library": "KayKit Medieval Hexagon Pack 1.0 / project pastel adaptation",
+  "version": "kaykit-1.0-pastel-2",
+  "author": "Kay Lousberg",
+  "license": "CC0-1.0",
+  "officialPage": "https://kaylousberg.itch.io/kaykit-medieval-hexagon",
+  "officialRepository": "https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0",
+  "sourceTreeSha": "84fa4e91af6a88989be7c99e0891cede11f2ca38",
+  "sourceArchiveUrl": "https://codeload.github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0/zip/refs/heads/main",
+  "sourceArchiveSha256": "abe5b0c00456ab66a82883a6b16e860c419d822db5597596efccb09e57820c42",
+  "models": {
+    "houseA": {
+      "name": "houseA",
+      "label": "民居 A",
+      "sourceFile": "Assets/gltf/buildings/blue/building_home_A_blue.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 1011,
+      "vertices": 1540,
+      "geometryBytes": 64586,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 0.9277318550935079,
+        "height": 1.0894375417280604,
+        "depth": 1.0
+      },
+      "sourceBounds": {
+        "min": [
+          -0.39597994089126587,
+          -2.086162709247219e-08,
+          -0.46865156292915344
+        ],
+        "max": [
+          0.3959798812866211,
+          0.9300001263618469,
+          0.385000079870224
+        ]
+      },
+      "sourceGltfSha256": "60b3568e086d586b491eed8168c46acb61bb9670fb2c296faa64929b18dfcbea",
+      "buffers": [
+        {
+          "uri": "building_home_A_blue.bin",
+          "sha256": "31c30bc9d4fb9ac6182e20331f2501ec153131ca01a57d8412a6b8e6219c23fd"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "houseB": {
+      "name": "houseB",
+      "label": "民居 B",
+      "sourceFile": "Assets/gltf/buildings/blue/building_home_B_blue.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 1393,
+      "vertices": 2305,
+      "geometryBytes": 95948,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 0.7963655567065535,
+        "height": 1.1650648068386869,
+        "depth": 1.0
+      },
+      "sourceBounds": {
+        "min": [
+          -0.43875277042388916,
+          -2.086162709247219e-08,
+          -0.5386515855789185
+        ],
+        "max": [
+          0.43617546558380127,
+          1.2800002098083496,
+          0.559999942779541
+        ]
+      },
+      "sourceGltfSha256": "bf503f4edcd3a744a021ccdd5b9215f6c8934ef87fa44d95632cb653422797eb",
+      "buffers": [
+        {
+          "uri": "building_home_B_blue.bin",
+          "sha256": "a9736eef43b33d8963f1f54b709eb4395cd5069aa6317b09856687d4045059ca"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "tavern": {
+      "name": "tavern",
+      "label": "旅店与酒馆",
+      "sourceFile": "Assets/gltf/buildings/blue/building_tavern_blue.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 2992,
+      "vertices": 4778,
+      "geometryBytes": 199516,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 0.8794660392670555,
+        "height": 1.0482861396760121,
+        "depth": 0.9999999999999999
+      },
+      "sourceBounds": {
+        "min": [
+          -0.5949788689613342,
+          -3.0875205538904993e-06,
+          -0.7023168802261353
+        ],
+        "max": [
+          0.5767492055892944,
+          1.3966469764709473,
+          0.6300007104873657
+        ]
+      },
+      "sourceGltfSha256": "58a3573cf468f9c5f1d03a6da74fbc884f5f662ccddbfef2a10860abfe50109b",
+      "buffers": [
+        {
+          "uri": "building_tavern_blue.bin",
+          "sha256": "00a4f91c275d168a4fcaea5f35cd4839047b498232f5f807d29ec17aa9490fe9"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "blacksmith": {
+      "name": "blacksmith",
+      "label": "铁匠工坊",
+      "sourceFile": "Assets/gltf/buildings/blue/building_blacksmith_blue.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 2410,
+      "vertices": 3393,
+      "geometryBytes": 143394,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 0.9999999999999999,
+        "height": 0.7650696960887606,
+        "depth": 0.9670309632836411
+      },
+      "sourceBounds": {
+        "min": [
+          -0.6300048232078552,
+          -0.005102336406707764,
+          -0.5599995255470276
+        ],
+        "max": [
+          0.6575961709022522,
+          0.9800021648406982,
+          0.6851505041122437
+        ]
+      },
+      "sourceGltfSha256": "b9b76474cde5a379334b31cf8ef108c26e8051b6f7560402cd7c2a100fb4bf54",
+      "buffers": [
+        {
+          "uri": "building_blacksmith_blue.bin",
+          "sha256": "2b5f91972249f3b4acee5d293b0291769213f3bd6272bd3fdacbd2b113b82853"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "market": {
+      "name": "market",
+      "label": "市集摊铺",
+      "sourceFile": "Assets/gltf/buildings/blue/building_market_blue.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 3125,
+      "vertices": 4169,
+      "geometryBytes": 177172,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 1.0,
+        "height": 0.5455429973386312,
+        "depth": 0.7311417644030607
+      },
+      "sourceBounds": {
+        "min": [
+          -0.9013807773590088,
+          -0.005638472735881805,
+          -0.7149999737739563
+        ],
+        "max": [
+          0.8980000615119934,
+          0.9760011434555054,
+          0.6006025075912476
+        ]
+      },
+      "sourceGltfSha256": "24874a4651dfff0d1aea31e15a32b9c35122958764c6f968ca55f286285ffbe9",
+      "buffers": [
+        {
+          "uri": "building_market_blue.bin",
+          "sha256": "35713e17b24a26274ba38def66f17fe838987e4e8f803cf680140b3754676442"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "lumbermill": {
+      "name": "lumbermill",
+      "label": "木作坊",
+      "sourceFile": "Assets/gltf/buildings/blue/building_lumbermill_blue.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 3170,
+      "vertices": 4602,
+      "geometryBytes": 193896,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 1.0,
+        "height": 1.2493537841925024,
+        "depth": 0.8699793323438811
+      },
+      "sourceBounds": {
+        "min": [
+          -0.6861284375190735,
+          -0.0035033971071243286,
+          -0.4592732787132263
+        ],
+        "max": [
+          0.6808386445045471,
+          1.704322099685669,
+          0.7299598306417465
+        ]
+      },
+      "sourceGltfSha256": "bf6ff5811c7e4aac10dbd32d0cb26b2dda6e31b894726bf9d567371a0fb1f1b4",
+      "buffers": [
+        {
+          "uri": "building_lumbermill_blue.bin",
+          "sha256": "48833c0baee78d6f896fbeda6210492b303101dd5aea686b529614ebb9888247"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "windmill": {
+      "name": "windmill",
+      "label": "风车磨坊",
+      "sourceFile": "Assets/gltf/buildings/blue/building_windmill_blue.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 2653,
+      "vertices": 3930,
+      "geometryBytes": 165258,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 1.0,
+        "height": 1.2950063725983343,
+        "depth": 0.7253001159245492
+      },
+      "sourceBounds": {
+        "min": [
+          -0.5578987002372742,
+          -1.4480118807114195e-05,
+          -0.37893959879875183
+        ],
+        "max": [
+          0.5678712129592896,
+          1.4578647315502167,
+          0.43758144974708557
+        ]
+      },
+      "sourceGltfSha256": "a98412d4bcd016ce63f66b5d7193adf664867c3649829707b04586fb73e31f38",
+      "buffers": [
+        {
+          "uri": "building_windmill_blue.bin",
+          "sha256": "ced3ff9447703352a7d57e2beb5b5e6f0c661c4d6c623a5d4efc22740103f467"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "watermill": {
+      "name": "watermill",
+      "label": "水车磨坊",
+      "sourceFile": "Assets/gltf/buildings/blue/building_watermill_blue.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 1921,
+      "vertices": 3119,
+      "geometryBytes": 130048,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 0.8495393369450653,
+        "height": 1.2686488585847984,
+        "depth": 1.0
+      },
+      "sourceBounds": {
+        "min": [
+          -0.5249811410903931,
+          -0.35000041127204895,
+          -0.3699711859226227
+        ],
+        "max": [
+          0.5250188708305359,
+          1.2180038690567017,
+          0.8659927845001221
+        ]
+      },
+      "sourceGltfSha256": "281a21d9965f3c09126482412a52442b8c008a26a148ee51a73d6dd090bc3d78",
+      "buffers": [
+        {
+          "uri": "building_watermill_blue.bin",
+          "sha256": "043cdc74fab6d256ddac1eeb512c99d03f1cefd6ef90b7b2ac8d572effdae003"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "watchtower": {
+      "name": "watchtower",
+      "label": "瞭望塔",
+      "sourceFile": "Assets/gltf/buildings/blue/building_tower_A_blue.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 2138,
+      "vertices": 3126,
+      "geometryBytes": 131616,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 0.8611199531706155,
+        "height": 1.900128937897324,
+        "depth": 0.9999999999999999
+      },
+      "sourceBounds": {
+        "min": [
+          -0.49663642048835754,
+          0.0,
+          -0.5734661817550659
+        ],
+        "max": [
+          0.49663636088371277,
+          2.191734552383423,
+          0.5800000429153442
+        ]
+      },
+      "sourceGltfSha256": "792eee30a2c4524a1c26eace28cd7b324ef86a72120766399e695923ea06058c",
+      "buffers": [
+        {
+          "uri": "building_tower_A_blue.bin",
+          "sha256": "5feb3e59e0a48d3bfaf852374c870b28452526c795ac54c344a23e57f4e5211d"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "well": {
+      "name": "well",
+      "label": "水井",
+      "sourceFile": "Assets/gltf/buildings/blue/building_well_blue.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 726,
+      "vertices": 1187,
+      "geometryBytes": 49462,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 0.8682205520072486,
+        "height": 1.1002884337042989,
+        "depth": 1.0
+      },
+      "sourceBounds": {
+        "min": [
+          -0.31495729088783264,
+          -1.611560833225667e-06,
+          -0.3753618001937866
+        ],
+        "max": [
+          0.3368363678455353,
+          0.8260108828544617,
+          0.3753618001937866
+        ]
+      },
+      "sourceGltfSha256": "66305823322b2e6a7f1cb8d8bf0d91ed9b94b8d96f61d0f7af77bd0d09f6463e",
+      "buffers": [
+        {
+          "uri": "building_well_blue.bin",
+          "sha256": "5c50811c6666df2a9b43afc1a83ccccf19678c0f8e40c3ca0bf341722dc5133f"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "bridge": {
+      "name": "bridge",
+      "label": "石桥",
+      "sourceFile": "Assets/gltf/buildings/neutral/building_bridge_A.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 604,
+      "vertices": 686,
+      "geometryBytes": 29692,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 0.6928196845948924,
+        "height": 0.6495194802387259,
+        "depth": 0.9999999999999999
+      },
+      "sourceBounds": {
+        "min": [
+          -0.6666644811630249,
+          -1.0,
+          -0.9622503519058228
+        ],
+        "max": [
+          0.6666667461395264,
+          0.25,
+          0.9622492790222168
+        ]
+      },
+      "sourceGltfSha256": "7f3a7e8b3e72a66dec70d6a00eb87e62d3ca5c6892b9b965c675cb9d193e4d29",
+      "buffers": [
+        {
+          "uri": "building_bridge_A.bin",
+          "sha256": "dc78350862e173e7d948dab4dbb3e32234f3ab2302a149da8d0c0da9380040d5"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    },
+    "barrel": {
+      "name": "barrel",
+      "label": "木桶",
+      "sourceFile": "Assets/gltf/decoration/props/barrel.gltf",
+      "author": "Kay Lousberg",
+      "license": "CC0-1.0",
+      "triangles": 240,
+      "vertices": 441,
+      "geometryBytes": 18198,
+      "meshCount": 1,
+      "materialCount": 1,
+      "dimensions": {
+        "width": 0.9999999630200777,
+        "height": 1.05080347571331,
+        "depth": 0.9999999999999999
+      },
+      "sourceBounds": {
+        "min": [
+          -0.10073928534984589,
+          -1.0430813546236095e-08,
+          -0.10073825716972351
+        ],
+        "max": [
+          0.1007370799779892,
+          0.2117120623588562,
+          0.10073811560869217
+        ]
+      },
+      "sourceGltfSha256": "24673663eb53ffab6c8db612654856f051c4877bfc02ea25fee89cd95ee4d100",
+      "buffers": [
+        {
+          "uri": "barrel.bin",
+          "sha256": "ff1b034f1ac95b063a2baa3d72a0ad0b33f25337f776e7a25fbc811d9c77dee8"
+        }
+      ],
+      "orientation": "+Y up, +Z front; XZ centered and minY grounded",
+      "modifications": [
+        "flatten rigid glTF hierarchy at authored rest pose",
+        "retain source indices, hard-edge normals and UVs",
+        "sample glTF atlas with V from PNG top row (no flip); map source blue and elevated sloped neutral roof to coral before low-light classification; retain warm wood and vertical wall colors; bake linear pastel vertex colors as normalized uint16 (channel error <= 1/65535)",
+        "uniform normalization max(width,depth)=1; ground y=0"
+      ]
+    }
+  },
+  "names": [
+    "houseA",
+    "houseB",
+    "tavern",
+    "blacksmith",
+    "market",
+    "lumbermill",
+    "windmill",
+    "watermill",
+    "watchtower",
+    "well",
+    "bridge",
+    "barrel"
+  ],
+  "includesNPC": false,
+  "totalTriangles": 22383,
+  "totalGeometryBytes": 1398786,
+  "runtime": "classic JS; inline base64 typed geometry; no fetch, modules, loaders or texture requests"
+}

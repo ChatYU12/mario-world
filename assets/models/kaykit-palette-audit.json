@@ -1,0 +1,214 @@
+{
+  "version": "kaykit-1.0-pastel-2",
+  "geometryBuffersUnchanged": 48,
+  "changedColorModels": 12,
+  "models": {
+    "houseA": {
+      "roofArea": 1.229515426585077,
+      "coralFraction": 0.8145427837690018,
+      "warmWoodFraction": 0.18545721623099806,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 0.9277318550935079,
+        "height": 1.0894375417280604,
+        "depth": 1.0
+      }
+    },
+    "houseB": {
+      "roofArea": 0.968357491076577,
+      "coralFraction": 0.8296612388737231,
+      "warmWoodFraction": 0.16574302875048258,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 0.7963655567065535,
+        "height": 1.1650648068386869,
+        "depth": 1.0
+      }
+    },
+    "tavern": {
+      "roofArea": 0.9775263178910509,
+      "coralFraction": 0.37008142684726847,
+      "warmWoodFraction": 0.6299185731527326,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 0.8794660392670555,
+        "height": 1.0482861396760121,
+        "depth": 0.9999999999999999
+      }
+    },
+    "blacksmith": {
+      "roofArea": 0.6594574180922327,
+      "coralFraction": 0.8915649261037086,
+      "warmWoodFraction": 0.10843507389629062,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 0.9999999999999999,
+        "height": 0.7650696960887606,
+        "depth": 0.9670309632836411
+      }
+    },
+    "market": {
+      "roofArea": 0.20781229427377435,
+      "coralFraction": 0.7474217022326147,
+      "warmWoodFraction": 0.2204045629795853,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 1.0,
+        "height": 0.5455429973386312,
+        "depth": 0.7311417644030607
+      }
+    },
+    "lumbermill": {
+      "roofArea": 0.9556580782403999,
+      "coralFraction": 0.31607663187632273,
+      "warmWoodFraction": 0.6839233681236768,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 1.0,
+        "height": 1.2493537841925024,
+        "depth": 0.8699793323438811
+      }
+    },
+    "windmill": {
+      "roofArea": 0.33451507844332334,
+      "coralFraction": 0.8508453724641638,
+      "warmWoodFraction": 0.12803704426692178,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 1.0,
+        "height": 1.2950063725983343,
+        "depth": 0.7253001159245492
+      }
+    },
+    "watermill": {
+      "roofArea": 1.652242594740417,
+      "coralFraction": 0.5631639640850113,
+      "warmWoodFraction": 0.43187009363862955,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 0.8495393369450653,
+        "height": 1.2686488585847984,
+        "depth": 1.0
+      }
+    },
+    "watchtower": {
+      "roofArea": 0.7514998227030806,
+      "coralFraction": 0.949264334874221,
+      "warmWoodFraction": 0.05073566512577897,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 0.8611199531706155,
+        "height": 1.900128937897324,
+        "depth": 0.9999999999999999
+      }
+    },
+    "well": {
+      "roofArea": 0.8718219082866376,
+      "coralFraction": 0.6179582672623714,
+      "warmWoodFraction": 0.3820417327376287,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 0.8682205520072486,
+        "height": 1.1002884337042989,
+        "depth": 1.0
+      }
+    },
+    "bridge": {
+      "roofArea": 0.15607108400915368,
+      "coralFraction": 0.0,
+      "warmWoodFraction": 0.0,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 0.6928196845948924,
+        "height": 0.6495194802387259,
+        "depth": 0.9999999999999999
+      }
+    },
+    "barrel": {
+      "roofArea": 0.6937142781206136,
+      "coralFraction": 0.0,
+      "warmWoodFraction": 0.7688421406064884,
+      "darkFraction": 0.0,
+      "dimensions": {
+        "width": 0.9999999630200777,
+        "height": 1.05080347571331,
+        "depth": 0.9999999999999999
+      }
+    }
+  },
+  "cause": "Initial conversion used 1-v for glTF image V. Corrected to PNG top-origin v; blue and elevated sloped neutral roofs mapped to coral before low-light classification.",
+  "geometrySha256": {
+    "houseA": {
+      "p": "774133019906b2b59acff76dac72829f41b8fd9a642e3f93fbd8add200622f8c",
+      "n": "cb9a9410110b192400d6eaa6288a5745b39e2b7a1c29bb75b72fec9d7501d0bd",
+      "uv": "5693d087aac226f5d9d658938fbd5eb5ae10c817967e8030183f22c75ea493b9",
+      "i": "c75df713b47fe6025c4619e0493476a069f0d33cb906dbff65793fee315b2c0a"
+    },
+    "houseB": {
+      "p": "c74c90bbf546f72f218bf7fdc3d267746ff1f86adbd7ac551297bbe5532130a6",
+      "n": "bd36c7be0cb22fe7c8cc91925073babf5967b7a9ef3b0b61542a29002a7af752",
+      "uv": "6d3fd00f4c0ab9a6b2fa653131587beff8fad02e8e567c03aa027d4890dd7c82",
+      "i": "b0532475e903c05db4034cc3611dbaa3ccdc6dce1c82b7da59ff02bb947b99dc"
+    },
+    "tavern": {
+      "p": "6f35b765c8bfb3ddcc9e884c7f1ec4b0b65be442d069e10cd5f208b1ef7d8215",
+      "n": "dbbb25abcc7f0133cdc549e48d1a817b4633b17351c3196401caf54db817f984",
+      "uv": "096079ee10871ce7f18ba2a7d386c92c6e4fc656b9e0c31df18bd91a8d76c2cd",
+      "i": "ad3dd0f1138e646a1fb74a7395924b53aea5fe9b7e632ab5f59fee0a5e28e5ea"
+    },
+    "blacksmith": {
+      "p": "4d21307fa064a69c014ce4726ab025ea96ad590a31d9e61accd26e945cba7813",
+      "n": "a2e9d9b7678f768bc6b79d29a966ea8b5e313187127f062ebc72ceea53ab66af",
+      "uv": "6af00831bacaaf020557bd9b685ba6489f93bea2bb25df1695ba05d560e3a577",
+      "i": "3b4fa041e1a744720ce631999ee2b3420ec10131df5513d16b06db5b05d6b381"
+    },
+    "market": {
+      "p": "340e41e429437ea4aafae4213e58ccebf694de813de3ee1fb6fc3de21d972d08",
+      "n": "c4dd0fab5eb38612a2f8a7f437297cb3432c22d2c73d58003349d6dd36d51609",
+      "uv": "0b017dd98cd4e179a552f17b613997e16b8d7df153dd1357ac779d62198d0612",
+      "i": "0b6958fe3464c994c3f67f1a60a5c9ff5a1a037cd7a84c65b7165619d169e806"
+    },
+    "lumbermill": {
+      "p": "0ac74cad8530bc13fb04198ff7a6a47fcbbb6d03680686c53952103ccfb2c1a9",
+      "n": "15ddbd80b8d4f54894cc87bc1245a5149a42c1c3fcf0613b3ce44f1f1a75cc88",
+      "uv": "cdec997ee1b669258e3ec01f203f93b25a5d86086cf214f6187cdfc80602885f",
+      "i": "3c1d82382cf8917ea7552a8e50fdd9b2b67da989b05d65d7d93cfa227361a2ac"
+    },
+    "windmill": {
+      "p": "56cbb2ee55ced6a940ecd7db0c498c111268b71333d2d3c21b71f24a89c8bee1",
+      "n": "406e6c5cf12841ba71264201063ce04851765201509808641dcf3ec4994dc35b",
+      "uv": "9b050cd5f7982dfbbfd3f8d3ce224121ab6d7b858cf9876deceec70a5ba35981",
+      "i": "9a58bc6dca3adb9ab2f50e4640aab31d831f0b32b48bafd83d53381aaeee55d0"
+    },
+    "watermill": {
+      "p": "d5d8676342bf7091d8b97e17cb2f82dd135106c08683f8fc2d852f6fdf2350f5",
+      "n": "906feb2289232104729119d5bc1c30ffbc2e098ffe8d13a5c14df3ea2a1078a4",
+      "uv": "3462be651e0e3685257e6079d36e158258160d14464b54568bf30de5d176ffd6",
+      "i": "3aed72695b5b684d035b6f888ff640dd9fe75baa5c292f36b846cb4568e9ee3e"
+    },
+    "watchtower": {
+      "p": "d262cc1815e0f71cc34343c93db8a1da9645806c3337afe0c5b501c19aff1f08",
+      "n": "656d05321ca9ff09c475fbab972159089555aca10a6889a81e9ca64a5b36cd5e",
+      "uv": "0389aef76d6b6c068820f9796587ab7bb8e770f7640235b3b30f83403825cb4d",
+      "i": "f0c8300cd0a39c2a983a80e89203b550679f6f267ffe05961989da2c64b9943a"
+    },
+    "well": {
+      "p": "3066df923ee998c22684dbee119e0db32872b3e4690dc966f085a1565b84474f",
+      "n": "53663fc11112ebc4b504d0a00eb6ce08e47e00e1ca5ca58049f4496b5ad5752d",
+      "uv": "8b74b9925ca468b8a4aa2c28830d3d376c36b8bc44b37bbcdf4363f7f0a0432a",
+      "i": "1f1f8e4002ffb5fe1bd93aefd05952d1fcbc99645d916f8ac590f9fd31d2917a"
+    },
+    "bridge": {
+      "p": "8d89d91228f564e2b230377647914e8887842ff96d20d1c115542c59e26dfa9a",
+      "n": "3959b15a0a65941cf2c9b6d687af0233d54fc3c728671252da918311a7288e91",
+      "uv": "d5055087f273767c3b8bcc52e25eb8191d4349744401ff33485f4d24167df453",
+      "i": "567a462ab83ce885d97b101d61b214323d3eb1b49839f628d2cb03bebb0e1bef"
+    },
+    "barrel": {
+      "p": "140a42365d090db2b7771fcd63101351aaec4935144c31f0314ddeb0681c797c",
+      "n": "165a5d2f3655d35de9cbff8d89db3b243adeaf7e0b0929a23aff3720fe121fe1",
+      "uv": "eaa9c3ce1bd32441f85827d17649a45e9410188a37097eef2eefefcebd198464",
+      "i": "136ee8649ee8f23cb72bd451aba27f9b9cbf182a1bd26713ceac634211604aef"
+    }
+  }
+}
