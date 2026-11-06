@@ -5,6 +5,92 @@
     var a=lat*Math.PI/180,b=lon*Math.PI/180;
     return new THREE.Vector3(radius*Math.cos(a)*Math.cos(b),radius*Math.sin(a),radius*Math.cos(a)*Math.sin(b));
   }
+  /* ---------------------------------------------------------- isometric map camera
+   * The mainland (map/focus) is drawn by a second, orthographic camera that never
+   * rotates, while the planet and the descent keep the perspective camera:
+   *   azimuth   45°       the eye sits south-east of the target and looks north-west
+   *   elevation 35.264°   atan(1/√2): the true-isometric angle where one unit of x,
+   *                       y and z foreshorten equally, so buildings keep equal scale
+   *   distance  240       fixed eye-to-target length. It never frames anything; only
+   *                       near/far and the fog band are derived from it.
+   * The framing follows the 204×174 footprint: it is fitted into the frustum with
+   * ISO.margin padding per side, so the ground rectangle fills 1-2*margin = 82% of the
+   * binding viewport axis (height on landscape, width on portrait). Terrain and building
+   * relief then reaches ~87% of that axis, which leaves the padding the margin promises
+   * without ever clipping the silhouette. Zoom is three fixed framings, never a dolly.
+   */
+  var ISO={azimuth:45,elevation:35.264,distance:240,margin:.05,zooms:[1,1.45,2.1],
+    regionDistance:42,closeDistance:30,nearSlack:60,farSlack:260,
+    fogNearOffset:-15,fogFarOffset:190};
+  var ISO_RAD=Math.PI/180;
+  function isoDirection(azimuth, elevation) {
+    var a=(azimuth===undefined?ISO.azimuth:azimuth)*ISO_RAD,e=(elevation===undefined?ISO.elevation:elevation)*ISO_RAD;
+    return new THREE.Vector3(Math.cos(e)*Math.sin(a),Math.sin(e),Math.cos(e)*Math.cos(a)).normalize();
+  }
+  /* Three's lookAt basis for a fixed eye direction: x = right, y = screen up,
+     z = eye - target. */
+  function isoAxes(direction) {
+    var back=direction.clone().normalize(),worldUp=new THREE.Vector3(0,1,0);
+    var right=new THREE.Vector3().crossVectors(worldUp,back).normalize();
+    var screenUp=new THREE.Vector3().crossVectors(back,right).normalize();
+    return {back:back,right:right,up:screenUp};
+  }
+  /* Half extents of a world box around its centre, in camera space. */
+  function isoExtents(bounds, minY, maxY, direction) {
+    var axes=isoAxes(direction||isoDirection());
+    var cx=(bounds.minX+bounds.maxX)/2,cy=(minY+maxY)/2,cz=(bounds.minZ+bounds.maxZ)/2;
+    var xs=[bounds.minX,bounds.maxX],ys=[minY,maxY],zs=[bounds.minZ,bounds.maxZ];
+    var ex=0,ey=0,ed=0,i,j,k,dx,dy,dz;
+    for(i=0;i<2;i++)for(j=0;j<2;j++)for(k=0;k<2;k++){
+      dx=xs[i]-cx;dy=ys[j]-cy;dz=zs[k]-cz;
+      ex=Math.max(ex,Math.abs(dx*axes.right.x+dy*axes.right.y+dz*axes.right.z));
+      ey=Math.max(ey,Math.abs(dx*axes.up.x+dy*axes.up.y+dz*axes.up.z));
+      ed=Math.max(ed,Math.abs(dx*axes.back.x+dy*axes.back.y+dz*axes.back.z));
+    }
+    return {right:axes.right,up:axes.up,back:axes.back,x:ex,y:ey,depth:ed};
+  }
+  /* Orthographic frustum that contains the box at `zoom`, padded on the tighter
+     axis: the contained box therefore fills exactly 1-2*margin of that axis. */
+  function isoFrustum(bounds, minY, maxY, aspect, zoom, direction) {
+    var extent=isoExtents(bounds,minY,maxY,direction),a=Math.max(.15,aspect||1),z=Math.max(.05,zoom||1);
+    var half=Math.max(extent.y,extent.x/a)/(1-ISO.margin*2)/z;
+    return {halfHeight:half,halfWidth:half*a,height:half*2,width:half*2*a,
+      extentX:extent.x,extentY:extent.y,depth:extent.depth,right:extent.right,up:extent.up,back:extent.back};
+  }
+  /* The legacy map "distance" stays the public scalar (deep links, snapshots, label
+     thresholds, enrichment LOD all read it); the orthographic zoom is a log-linear
+     function of it, pinned to the three framings so every historic distance keeps a
+     sensible framing and tier stepping can still be expressed as a distance. */
+  function isoAnchors(whole) {
+    var top=Math.max(ISO.regionDistance+1,isFinite(whole)?whole:ISO.regionDistance*4);
+    return [[top,ISO.zooms[0]],[ISO.regionDistance,ISO.zooms[1]],[ISO.closeDistance,ISO.zooms[2]]];
+  }
+  function zoomForDistance(distance, whole) {
+    var anchors=isoAnchors(whole),d=isFinite(distance)?Math.max(.01,distance):anchors[0][0];
+    var i,a,b,t;
+    if(d>=anchors[0][0])return anchors[0][1];
+    if(d<=anchors[2][0])return anchors[2][1];
+    for(i=0;i<2;i++){
+      a=anchors[i];b=anchors[i+1];
+      if(d<=a[0]&&d>=b[0]){t=(Math.log(d)-Math.log(a[0]))/(Math.log(b[0])-Math.log(a[0]));return a[1]+(b[1]-a[1])*t;}
+    }
+    return anchors[2][1];
+  }
+  function distanceForZoom(zoom, whole) {
+    var anchors=isoAnchors(whole),z=isFinite(zoom)?zoom:1;
+    var i,a,b,t;
+    if(z<=anchors[0][1])return anchors[0][0];
+    if(z>=anchors[2][1])return anchors[2][0];
+    for(i=0;i<2;i++){
+      a=anchors[i];b=anchors[i+1];
+      if(z>=a[1]&&z<=b[1]){t=(Math.log(z)-Math.log(a[1]))/(Math.log(b[1])-Math.log(a[1]));return Math.exp(Math.log(a[0])+(Math.log(b[0])-Math.log(a[0]))*t);}
+    }
+    return anchors[2][0];
+  }
+  /* Measured from the orthographic eye, which always sits ISO.distance from the
+     target, so the island's depth range is ISO.distance ± ~113. */
+  function isoFogNear(){return ISO.distance+ISO.fogNearOffset;}
+  function isoFogFar(){return ISO.distance+ISO.fogFarOffset;}
   function create(canvas, options) {
     var T=THREE,opts=options||{},nodes=opts.nodes||[],reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     T.ColorManagement.legacyMode=false;
@@ -22,37 +108,140 @@
     renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.10;
     if(renderer.shadowMap){renderer.shadowMap.enabled=opts.shadows===true&&window.innerWidth>680&&!opts.compatibility;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.type=T.PCFSoftShadowMap;}
     var camera=new T.PerspectiveCamera(38,1,.05,2000),clock=new T.Clock();
+    // Second, orthographic camera for the mainland. `camera` above stays the
+    // planet/descent camera; nothing outside this closure may assume which one is
+    // live, so every consumer (picking, labels, LOD, fog, render) asks
+    // activeCamera() instead of naming one.
+    var iso=new T.OrthographicCamera(-1,1,1,-1,.05,1000);
+    var isoEyeDirection=isoDirection(),isoHeights=null,isoBase=null;
+    var isoView={zoom:1,halfHeight:1,halfWidth:1,height:2,width:2,near:.05,far:1000},isoAim=new T.Vector3();
     var overviewDistance=opts.startDistance||4.8,raf=0,disposed=false,visible=true,frames=0;
     var dirty=true,lastRenderAt=-1000,contextLost=false,contextLosses=0,recoveryTimer=0,lostSnapshot=null;
     var maxFPS=opts.maxFPS||60,pixelRatio=1,gpuResident='globe',animationTime=0;
-    var globeVillage=null,mapVillage=null,globeFrontier=null,mapFrontier=null,groundScatter=null;
+    var globeVillage=null,mapVillage=null,globeFrontier=null,mapFrontier=null,groundScatter=null,islandLandmarks=null;
     var environmentFPS=window.innerWidth<700?30:60,pinsUpdates=0,sunScratch=new T.Vector3();
     var quality=opts.quality||(opts.compatibility?'smooth':'auto'),dynamicScale=1,resolutionMoving=false,drawMS=0,measuredFPS=0,intervals=[],intervalTotal=0,warmFrames=0,enrichment=null,placeRequest=null,extraAnimation=false,globePickTargets=[],mapPickTargets=[],lodHidden=0,residentLabels=[],viewWidth=800,viewHeight=800,pointerRect=null,bufferResizePending=true;
     var profiles={auto:{pixels:1800000,dpr:1.8,motion:.82},detail:{pixels:2600000,dpr:2,motion:.95},smooth:{pixels:786432,dpr:1.1,motion:1}};
     if(!profiles[quality])quality='auto';
     var animateWater=opts.animateWater===true&&!reduced&&!opts.compatibility;
     function schedule(){if(!disposed&&!contextLost&&!document.hidden&&(visible||state.mode==='descending')&&!raf)raf=requestAnimationFrame(loop);}
-    function invalidate(){dirty=true;schedule();}
+    function isIsoMode(){return state.mode==='map'||state.mode==='focus';}
+    function activeCamera(){return isIsoMode()?iso:camera;}
+    // Syncing here keeps the orthographic camera's matrices current for every entry
+    // point (mode change, resize, snapshot restore, zoom step), not just the next
+    // animation frame, so pointer picking cannot run against a stale frustum.
+    function invalidate(){if(isIsoMode())syncIsoCamera();dirty=true;schedule();}
     var up=new T.Vector3(0,1,0),axisX=new T.Vector3(1,0,0),axisY=new T.Vector3(0,1,0);
     var raycaster=new T.Raycaster(),pointer=new T.Vector2(),groundPlane=new T.Plane(up,0);
     var key=new T.DirectionalLight(0xfff0d7,1.65),fill=new T.DirectionalLight(0xc3ddff,.40),hemisphere=new T.HemisphereLight(0xd8eeff,0x596752,.90);
     scene.add(hemisphere);
     scene.add(key,key.target,fill);fill.position.set(3,-1,-2);key.castShadow=true;
-    key.shadow.mapSize.set(1024,1024);key.shadow.radius=3;
+    key.shadow.mapSize.set(1024,1024);key.shadow.radius=1.8;
     var story,map=null;try{story=window.MarioStoryWorld.build(T,globe,opts);}catch(error){renderer.dispose();if(renderer.forceContextLoss)renderer.forceContextLoss();throw error;}
     var state={mode:'overview',selected:null,region:null,autoRotate:!!opts.autoRotate&&!reduced,
       yaw:opts.initialYaw||0,pitch:opts.initialPitch===undefined?.16:opts.initialPitch,
       targetYaw:0,targetPitch:.16,distance:overviewDistance,targetDistance:overviewDistance,
       mapDistance:135,mapTargetDistance:42,mapTarget:new T.Vector3(),mapDesired:new T.Vector3(),
       dragging:false,moved:0,hover:null,transitionTime:0,pending:null,fade:1,activePlace:null,activeNpc:null};
-    var mapViews={overview:new T.Vector3(.48,.93,1.12).normalize(),immersive:new T.Vector3(.20,.38,1.55).normalize()},mapView=opts.mapView==='overview'?'overview':'immersive';
-    var mapDirection=mapViews[mapView].clone(),mapDesiredDirection=mapDirection.clone(),look=new T.Vector3(),shadowSun=new T.Vector3(99,99,99),shadowWeather='';
-    function setMapView(value){if(!mapViews[value])return;mapView=value;mapDesiredDirection.copy(mapViews[value]);if(reduced)mapDirection.copy(mapDesiredDirection);invalidate();if(opts.onMapViewChange)opts.onMapViewChange(value);}
+    // mapView stays public state (snapshots, opts.onMapViewChange, getMapView()) but a
+    // fixed isometric camera cannot swing to an "immersive" compass direction, so the
+    // recorded value no longer moves the eye.
+    var mapViews=['overview','immersive'],mapView=opts.mapView==='overview'?'overview':'immersive';
+    var look=new T.Vector3(),shadowSun=new T.Vector3(99,99,99),shadowWeather='';
+    function setMapView(value){if(mapViews.indexOf(value)<0)return;mapView=value;invalidate();if(opts.onMapViewChange)opts.onMapViewChange(value);}
     var geography=window.MarioWorldGeography;
     var regionColors={snow:'#6cabc4',desert:'#bb8d4c',lava:'#b56b64',forest:'#54885b',gardens:'#c98b54',canyon:'#b86c48',lake:'#4f91b5'};
     var orbitRegions=geography.regions.map(function(g){var n=nodes.find(function(n){return n.id===g.id;});return{id:g.id,name:n?(n.short||n.name):g.name,lat:g.lat,lon:g.lon,color:n?n.color:regionColors[g.id]||'#54885b'};});
-    var mapMaxDistance=geography.mapMaxDistance||180;
     function wholeMapDistance(){var b=geography.bounds,aspect=Math.max(.4,viewWidth/viewHeight);return Math.max(geography.mapOverviewDistance||165,(b.maxX-b.minX)/(.53*aspect));}
+    /* --- orthographic mainland framing ------------------------------------- */
+    function isoWholeDistance(){return wholeMapDistance();}
+    /* Real terrain relief, sampled from the shared geography, so near/far and the fog
+       band cover every structure even before (and without) the map group or any optional
+       detail module being present. */
+    function isoHeightRange(){
+      if(isoHeights)return isoHeights;
+      var b=geography.bounds,lo=Infinity,hi=-Infinity,i,j,h;
+      for(i=0;i<=24;i++)for(j=0;j<=24;j++){
+        h=geography.heightAt(b.minX+(b.maxX-b.minX)*i/24,b.minZ+(b.maxZ-b.minZ)*j/24);
+        if(h<lo)lo=h;if(h>hi)hi=h;
+      }
+      if(!isFinite(lo)||!isFinite(hi)){lo=-1;hi=14;}
+      return (isoHeights={min:lo,max:hi});
+    }
+    function isoAspect(){return Math.max(.15,(viewWidth||800)/(viewHeight||800));}
+    /* Whole-island frustum at zoom 1; only the viewport aspect changes it. Framing uses
+       the footprint plane (the 204×174 rectangle the user measures), depth uses the real
+       terrain slab so no hill or building is clipped by the near/far planes. */
+    // The map bounds are a rectangle of sea around a rounded island, so fitting
+    // them leaves the land at ~60% of the frame. The isometric plate wants the
+    // island to fill the frame instead, so the fit uses the land extent measured
+    // from the shared height field (falling back to the bounds when the map is
+    // missing or the sampled land area is implausibly small).
+    var isoLand=null,isoLandKey='';
+    function landBounds(){
+      var b=geography.bounds,sea=geography.seaLevel||.48;
+      var key=b.minX+':'+b.maxX+':'+b.minZ+':'+b.maxZ+':'+sea+':'+(map?'1':'0');
+      if(isoLand&&isoLandKey===key)return isoLand;
+      var minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity,hits=0,i,j,x,z;
+      for(i=0;i<=48;i++)for(j=0;j<=48;j++){
+        x=b.minX+(b.maxX-b.minX)*i/48;z=b.minZ+(b.maxZ-b.minZ)*j/48;
+        if(!map||map.heightAt(x,z)<sea+.6)continue;
+        hits++;if(x<minX)minX=x;if(x>maxX)maxX=x;if(z<minZ)minZ=z;if(z>maxZ)maxZ=z;
+      }
+      var full=(b.maxX-b.minX)*(b.maxZ-b.minZ);
+      isoLand=(hits>40&&(maxX-minX)*(maxZ-minZ)>full*.25)?{minX:minX,maxX:maxX,minZ:minZ,maxZ:maxZ}:{minX:b.minX,maxX:b.maxX,minZ:b.minZ,maxZ:b.maxZ};
+      isoLandKey=key;
+      return isoLand;
+    }
+    function isoBaseFrustum(){
+      var aspect=isoAspect(),heights=isoHeightRange(),frame=map?landBounds():geography.bounds;
+      if(!isoBase||isoBase.aspect!==aspect||isoBase.minY!==heights.min||isoBase.maxY!==heights.max||isoBase.frame!==frame){
+        isoBase=isoFrustum(frame,0,0,aspect,1,isoEyeDirection);
+        isoBase.depth=Math.max(isoBase.depth,isoExtents(frame,heights.min,heights.max,isoEyeDirection).depth);
+        isoBase.aspect=aspect;isoBase.minY=heights.min;isoBase.maxY=heights.max;isoBase.frame=frame;
+      }
+      return isoBase;
+    }
+    /* Places the orthographic camera for the current target and zoom. Map mode used to
+       call camera.setViewOffset() to dodge the story sidebar; on an orthographic
+       projection that shears the image instead of panning it, so the same 15%/17% of
+       viewport is applied here as a world-space translation of both the eye and its
+       aim (shift = fraction × frustum extent). */
+    function syncIsoCamera(){
+      if(!geography||!state)return isoView;
+      var base=isoBaseFrustum(),zoom=zoomForDistance(state.mapDistance,isoWholeDistance());
+      var halfHeight=base.height/(2*Math.max(.05,zoom)),halfWidth=halfHeight*isoAspect();
+      var panRight=0,panUp=0;
+      if((state.selected||state.activePlace)&&window.innerWidth>800)panRight=halfWidth*2*.15;
+      else if(state.activePlace&&window.innerWidth<=560)panUp=-halfHeight*2*.17;
+      isoAim.copy(state.mapTarget).addScaledVector(base.right,panRight).addScaledVector(base.up,panUp);
+      iso.position.copy(isoAim).addScaledVector(isoEyeDirection,ISO.distance);
+      iso.up.set(0,1,0);iso.lookAt(isoAim);
+      iso.left=-halfWidth;iso.right=halfWidth;iso.top=halfHeight;iso.bottom=-halfHeight;
+      // near/far are only depth planes: they must contain the island for any pan and
+      // stay generous enough that the environment's sky dome (0.8×far, capped at 420)
+      // still encloses tall portrait frustums.
+      iso.near=Math.max(.05,ISO.distance-base.depth-ISO.nearSlack);
+      iso.far=ISO.distance+base.depth+ISO.farSlack;
+      iso.updateProjectionMatrix();iso.updateMatrixWorld(true);
+      isoView.zoom=zoom;isoView.halfHeight=halfHeight;isoView.halfWidth=halfWidth;
+      isoView.height=halfHeight*2;isoView.width=halfWidth*2;isoView.near=iso.near;isoView.far=iso.far;
+      return isoView;
+    }
+    /* Discrete tiers: wheel, +/- and pinch only ever step between the three framings,
+       so the isometric composition cannot end up on an odd angle or an in-between
+       zoom. (Returning false at the ends keeps the caller from re-rendering.) */
+    function stepIsoZoom(closer){
+      var whole=isoWholeDistance(),level=zoomForDistance(state.mapTargetDistance,whole);
+      var next=null,i,value,list=ISO.zooms;
+      for(i=0;i<list.length;i++){
+        value=list[i];
+        if(closer?value>level+.001:value<level-.001){if(next===null||(closer?value<next:value>next))next=value;}
+      }
+      if(next===null)return false;
+      state.mapTargetDistance=distanceForZoom(next,whole);
+      return true;
+    }
     var environment=window.MarioWorldEnvironment?window.MarioWorldEnvironment.create(T,scene,{camera:camera,key:key,fill:fill,hemisphere:hemisphere,reducedMotion:reduced,quality:quality}):null,environmentAnimating=false;
     if(environment&&opts.environment)environment.configure(opts.environment);
     var pinHost=opts.pinHost,labels={},markers={},pointerPoints=new Map(),lastX=0,lastY=0,pinchDistance=0;
@@ -61,7 +250,7 @@
       if(reduced||!canvas.parentElement||!canvas.parentElement.appendChild)return false;
       if(!transitionFrame){transitionFrame=document.createElement('canvas');transitionFrame.className='world-transition-frame';transitionFrame.setAttribute('aria-hidden','true');canvas.parentElement.appendChild(transitionFrame);}
       var context=transitionFrame.getContext('2d');if(!context||!context.drawImage)return false;
-      if(fresh){(mapGroup.visible?mapGroup:globe).updateMatrixWorld(true);camera.updateMatrixWorld(true);renderer.render(scene,camera);frames++;}
+      if(fresh){var frameCamera=activeCamera();(mapGroup.visible?mapGroup:globe).updateMatrixWorld(true);frameCamera.updateMatrixWorld(true);renderer.render(scene,frameCamera);frames++;}
       transitionFrame.width=canvas.width;transitionFrame.height=canvas.height;context.drawImage(canvas,0,0);transitionFrame.hidden=false;transitionFrame.style.opacity='1';handoffTime=0;handoffActive=true;return true;
     }
     function finishTransition(){handoffActive=false;handoffTime=0;if(transitionFrame){transitionFrame.hidden=true;transitionFrame.width=transitionFrame.height=1;}}
@@ -76,7 +265,10 @@
     }
     function activateGpu(name){if(name===gpuResident)return;releaseGpu(gpuResident==='globe'?globe:mapGroup);gpuResident=name;}
     function geometryBytes(root){var geos=new Set(),bytes=0;root.traverse(function(o){var g=o.geometry;if(!g||geos.has(g))return;geos.add(g);Object.keys(g.attributes).forEach(function(k){bytes+=g.attributes[k].array.byteLength;});if(g.index)bytes+=g.index.array.byteLength;});return bytes;}
-    function snapshot(){return{mode:state.mode==='descending'?'map':state.mode,region:state.mode==='descending'?state.pending:state.region,selected:state.selected,place:state.activePlace,npc:state.activeNpc,yaw:state.yaw,pitch:state.pitch,distance:state.mode==='descending'?42:(state.mode==='map'||state.mode==='focus')?state.mapTargetDistance:state.targetDistance,target:state.mode==='descending'?null:state.mapDesired.toArray(),environment:environment?environment.getState():null,mapView:mapView};}
+    /* `distance` is the public map scalar and already encodes the isometric zoom tier;
+       `zoom` records the resolved tier so a restored view reports the same framing even
+       if the viewport aspect (and therefore the whole-island distance) changed. */
+    function snapshot(){return{mode:state.mode==='descending'?'map':state.mode,region:state.mode==='descending'?state.pending:state.region,selected:state.selected,place:state.activePlace,npc:state.activeNpc,yaw:state.yaw,pitch:state.pitch,distance:state.mode==='descending'?42:(state.mode==='map'||state.mode==='focus')?state.mapTargetDistance:state.targetDistance,zoom:isIsoMode()?zoomForDistance(state.mapTargetDistance,isoWholeDistance()):null,target:state.mode==='descending'?null:state.mapDesired.toArray(),environment:environment?environment.getState():null,mapView:mapView};}
     function notifyMode(){if(opts.onModeChange)opts.onModeChange(state.mode,state.region);}
     function notifyRegion(id){
       state.region=id;
@@ -85,10 +277,10 @@
       Object.keys(labels).forEach(function(k){labels[k].setAttribute('aria-pressed',String(k===id));});
     }
     function shadowScale(large){
-      if(renderer.shadowMap){renderer.shadowMap.enabled=!!large&&opts.shadows!==false&&window.innerWidth>800&&!opts.compatibility&&quality!=='smooth';key.shadow.mapSize.setScalar(quality==='detail'?1024:512);}
-      key.intensity=large?1.4:1.65;fill.intensity=large?.30:.40;renderer.toneMappingExposure=large?1.05:1.10;
+      if(renderer.shadowMap){renderer.shadowMap.enabled=!!large&&opts.shadows!==false&&window.innerWidth>800&&!opts.compatibility&&quality!=='smooth';key.shadow.mapSize.setScalar(quality==='detail'?2048:1024);}
+      key.intensity=large?2.05:1.65;fill.intensity=large?.16:.40;renderer.toneMappingExposure=large?1.00:1.10;
       key.position.set(large?-65:-3.5,large?110:5,large?85:5);key.target.position.set(0,0,0);
-      var size=large?112:2;
+      var size=large?140:2;
       Object.assign(key.shadow.camera,{left:-size,right:size,top:size,bottom:-size,near:large?1:.5,far:large?330:14});
       key.shadow.camera.updateProjectionMatrix();key.shadow.bias=large?-.0003:-.00015;key.shadow.normalBias=large?.035:.0015;
       if(renderer.shadowMap)renderer.shadowMap.needsUpdate=true;
@@ -123,18 +315,23 @@
       if(window.MarioVillageLife)mapVillage=window.MarioVillageLife.build(T,mapGroup,{kind:'map',heightAt:map.heightAt,places:enrichment?enrichment.places:[]});
       if(window.MarioFrontierWorld)mapFrontier=window.MarioFrontierWorld.build(T,mapGroup,{kind:'map'});
       if(window.MarioRenderQuality){if(!environment)window.MarioRenderQuality.fastWater(T,map.water,false);window.MarioRenderQuality.groundShadows(T,mapGroup,map.heightAt);window.MarioRenderQuality.optimize(T,mapGroup);}
-      // Ground scatter runs after the static-material pass so its own instanced
-      // materials are not rewritten. Every exclusion circle comes from the real
-      // placements, not a hand-written keep-out table.
+      // Ground scatter and the island props both run after the static-material
+      // pass so their own instanced materials are not rewritten. Every exclusion
+      // circle comes from the real placements, not a hand-written keep-out table.
+      var clearings=[];
+      if(enrichment&&enrichment.buildings)enrichment.buildings.forEach(function(b){var p=b.position||b;if(p&&typeof p.x==='number')clearings.push({x:p.x,z:p.z,radius:Math.max(1.2,b.radius||1.4)});});
+      if(mapVillage&&mapVillage.sites)mapVillage.sites.forEach(function(s){clearings.push({x:s.x,z:s.z,radius:Math.max(1.4,Math.max(s.width||3,s.depth||3)*.62)});});
+      if(mapFrontier&&mapFrontier.sites)mapFrontier.sites.forEach(function(s){clearings.push({x:s.x,z:s.z,radius:s.kind==='landmark'?2.6:1.7});});
       if(window.MarioGroundScatter){
         try{
-          var clearings=[];
-          if(enrichment&&enrichment.buildings)enrichment.buildings.forEach(function(b){var p=b.position||b;if(p&&typeof p.x==='number')clearings.push({x:p.x,z:p.z,radius:Math.max(1.2,b.radius||1.4)});});
-          if(mapVillage&&mapVillage.sites)mapVillage.sites.forEach(function(s){clearings.push({x:s.x,z:s.z,radius:Math.max(1.4,Math.max(s.width||3,s.depth||3)*.62)});});
-          if(mapFrontier&&mapFrontier.sites)mapFrontier.sites.forEach(function(s){clearings.push({x:s.x,z:s.z,radius:s.kind==='landmark'?2.6:1.7});});
           groundScatter=window.MarioGroundScatter.build(T,mapGroup,{heightAt:map.heightAt,seaLevel:map.seaLevel||.48,bounds:map.bounds,routes:map.routes,buildings:clearings,regions:map.regions,reducedMotion:reduced,quality:quality});
           if(groundScatter&&groundScatter.group)groundScatter.group.traverse(function(o){if(o.isMesh)o.userData.groundDetail=true;});
         }catch(groundError){groundScatter=null;if(window.console&&console.warn)console.warn('Ground detail layer unavailable:',groundError&&groundError.message);}
+      }
+      if(window.MarioIslandLandmarks){
+        try{
+          islandLandmarks=window.MarioIslandLandmarks.build(T,mapGroup,{heightAt:map.heightAt,bounds:map.bounds,seaLevel:map.seaLevel||.48,routes:map.routes,regions:map.regions,buildings:clearings,quality:quality,reducedMotion:reduced});
+        }catch(landmarkError){islandLandmarks=null;if(window.console&&console.warn)console.warn('Island landmarks unavailable:',landmarkError&&landmarkError.message);}
       }
       if(environment)environment.attachWater(map.water,{kind:'map',heightAt:map.heightAt,bounds:map.bounds,seaLevel:map.seaLevel||.48,coastField:map.coastField||(geography&&geography.coastField)});
       if(environment&&environment.attachMap)environment.attachMap(mapGroup,{heightAt:map.heightAt,bounds:map.bounds,seaLevel:map.seaLevel||.48,vertexTextures:!!(renderer.capabilities&&renderer.capabilities.maxVertexTextures>0)});
@@ -145,9 +342,12 @@
       freeze(mapGroup);
     }
     function closeStory(){
-      invalidate();state.selected=null;
+      state.selected=null;
       if(state.mode==='focus'){state.mode='map';notifyMode();}
       if(opts.onSelect)opts.onSelect(null);
+      // Invalidate last: closing a story also removes the sidebar pan, and the camera
+      // must be re-aimed before anything can pick against it.
+      invalidate();
     }
     function navigate(id,first){
       try{ensureMap();}catch(error){state.mode='overview';if(opts.onFatalError){opts.onFatalError(error);return;}throw error;}
@@ -157,7 +357,15 @@
       state.mapTargetDistance=['forest','gardens','canyon','lake'].includes(id)?62:['snow','desert','lava'].includes(id)?57:42;
       if(first){state.mapTarget.copy(state.mapDesired);state.mapDistance=reduced?state.mapTargetDistance:68;state.fade=1;}
       if(reduced){state.mapTarget.copy(state.mapDesired);state.mapDistance=state.mapTargetDistance;}
-      shadowScale(true);scene.fog=new T.Fog(0xe9f6ff,120,330);
+      // Fog is measured from the orthographic eye, which always sits ISO.distance from
+      // the target, so the island occupies a fixed depth slab (ISO.distance ± ~116).
+      // This band is what the environment produces when it is handed the same true
+      // distance (its presets are offset by max(0, distance-120)); using it here as well
+      // keeps the frame readable without the environment module: ~7% haze at the target
+      // depth and ~64% at the far corner, so the whole island is never washed out while
+      // close-ups still gain depth. Overriding the environment's own fog object is
+      // deliberately avoided - one mechanism (the distance) drives near/far.
+      shadowScale(true);scene.fog=new T.Fog(0xe9f6ff,isoFogNear(),isoFogFar());
       canvas.style.touchAction='none';notifyRegion(id);notifyMode();invalidate();
       if(placeRequest){var pendingPlace=placeRequest;placeRequest=null;openPlace(pendingPlace.id,pendingPlace.npcId);}
       if(coastRequested){coastRequested=false;openCoast();}
@@ -192,7 +400,7 @@
       state.distance=returning&&!immediate&&!reduced?2.1:overviewDistance;state.targetDistance=overviewDistance;
       globe.visible=true;mapGroup.visible=false;scene.fog=null;look.set(0,0,0);
       canvas.style.opacity='1';canvas.style.touchAction=opts.zoom?'none':'pan-y';
-      camera.clearViewOffset();shadowScale(false);
+      shadowScale(false);
       if(opts.onSelect)opts.onSelect(null);notifyMode();
     }
     function select(id){
@@ -204,14 +412,21 @@
       state.mapDesired.y+=1.5;state.mapTargetDistance=34;
       if(reduced){state.mapTarget.copy(state.mapDesired);state.mapDistance=state.mapTargetDistance;}
       notifyRegion(id);notifyMode();if(opts.onSelect)opts.onSelect(node);
+      invalidate();
     }
     function mapOverview(){
       if(contextLost)return;
       closePlace();invalidate();if(!map||state.mode==='overview')return;
       closeStory();setMapView('overview');state.mapDesired.set(-2,map.heightAt(-2,0)+1,0);state.mapTargetDistance=wholeMapDistance();state.region=null;
+      // Entering the island from a deep link or the whole-map button never runs
+      // navigate(), so the wide shadow frustum has to be armed here as well.
+      if(!reduced){shadowScale(true);scene.fog=new T.Fog(0xe9f6ff,isoFogNear(),isoFogFar());}
       Object.keys(labels).forEach(function(id){labels[id].setAttribute('aria-pressed','false');});
       if(opts.onRegionChange)opts.onRegionChange({id:'world',name:'大陆全貌'});
       if(reduced){state.mapTarget.copy(state.mapDesired);state.mapDistance=state.mapTargetDistance;}
+      // The whole-island framing is a state change of its own, so re-aim before the next
+      // frame (or the next pick) can run against the previous region's frame.
+      invalidate();
     }
     function clear(){if(state.activePlace){closePlace();return;}if(state.mode==='map'||state.mode==='focus')closeStory();else overview();}
     function closePlace(){if(!state.activePlace)return;state.activePlace=null;state.activeNpc=null;extraAnimation=false;if(opts.onPlaceSelect)opts.onPlaceSelect(null);invalidate();}
@@ -230,14 +445,20 @@
       state.mapDesired.z=T.MathUtils.clamp(state.mapDesired.z,b.minZ,b.maxZ);
       state.mapDesired.y=map.heightAt(state.mapDesired.x,state.mapDesired.z)+1.5;
     }
-    function setPointer(x,y){var r=state.dragging&&pointerRect?pointerRect:canvas.getBoundingClientRect();pointer.set((x-r.left)/r.width*2-1,-((y-r.top)/r.height)*2+1);raycaster.setFromCamera(pointer,camera);}
+    // Picking always runs against the live camera. The orthographic camera is synced
+    // first: its frustum and matrixWorld must match what the last frame drew before
+    // Raycaster can unproject the pointer.
+    function setPointer(x,y){var r=state.dragging&&pointerRect?pointerRect:canvas.getBoundingClientRect();if(isIsoMode())syncIsoCamera();pointer.set((x-r.left)/r.width*2-1,-((y-r.top)/r.height)*2+1);raycaster.setFromCamera(pointer,activeCamera());}
     function groundPoint(x,y){setPointer(x,y);groundPlane.constant=-state.mapTarget.y;return raycaster.ray.intersectPlane(groundPlane,new T.Vector3());}
     function pick(x,y){
-      setPointer(x,y);var root=(state.mode==='map'||state.mode==='focus')?mapGroup:globe;
+      setPointer(x,y);var root=isIsoMode()?mapGroup:globe;
       var hits=raycaster.intersectObjects(root===mapGroup?mapPickTargets:globePickTargets,false);
       for(var i=0;i<hits.length;i++){
         var o=hits[i].object,p=o,role=null,hidden=false;for(var ancestor=o;ancestor&&ancestor!==root;ancestor=ancestor.parent){if(!ancestor.visible){hidden=true;break;}}if(hidden)continue;
-        if(root===mapGroup){var terrainBlocked=false;for(var distance=1;distance<hits[i].distance-.35;distance+=1.5){var probe=raycaster.ray.at(distance,new T.Vector3());if(probe.y<map.heightAt(probe.x,probe.z)-.10){terrainBlocked=true;break;}}if(terrainBlocked)continue;}else if(hits[i].point.dot(camera.position)<0)continue;
+        // The orthographic eye is ISO.distance away, so a fixed 1.5 unit march would cost
+        // ~160 heightAt calls per hit. The step stays 1.5 for close perspective views and
+        // is stretched only as far as needed to cap the march at 64 probes.
+        if(root===mapGroup){var terrainBlocked=false,span=Math.max(0,hits[i].distance-.35),stride=Math.max(1.5,span/64);for(var distance=1;distance<span;distance+=stride){var probe=raycaster.ray.at(distance,new T.Vector3());if(probe.y<map.heightAt(probe.x,probe.z)-.10){terrainBlocked=true;break;}}if(terrainBlocked)continue;}else if(hits[i].point.dot(camera.position)<0)continue;
         if(window.MarioWorldEnrichment){var extraHit=window.MarioWorldEnrichment.resolveHit(hits[i]);if(extraHit)return extraHit;}
         while(p&&p!==root){if(p.userData.nodeId||p.userData.regionId){role=p.userData.nodeId||p.userData.regionId;break;}p=p.parent;}
         if(role)return role;
@@ -258,12 +479,18 @@
       if(state.dragging){
         var dx=e.clientX-lastX,dy=e.clientY-lastY;state.moved+=Math.abs(dx)+Math.abs(dy);
         if(pointerPoints.size>1&&map&&state.mode!=='overview'){
+          // Pinch steps between the same three framings as the wheel: the baseline is
+          // only re-armed when a step lands, so the ratio can accumulate across moves.
           var ps=Array.from(pointerPoints.values()),d=Math.hypot(ps[0].x-ps[1].x,ps[0].y-ps[1].y);
-          if(d>0&&pinchDistance>0)state.mapTargetDistance=T.MathUtils.clamp(state.mapTargetDistance*pinchDistance/d,16,Math.max(mapMaxDistance,wholeMapDistance()));
-          pinchDistance=d;
+          if(d>0&&pinchDistance>0){
+            var pinch=d/pinchDistance;
+            if(pinch>1.3||pinch<1/1.3){stepIsoZoom(pinch>1);pinchDistance=d;}
+          }else pinchDistance=d;
         }else if(state.mode==='overview'){
           state.yaw-=dx*.006;state.pitch=T.MathUtils.clamp(state.pitch+dy*.006,-1.1,1.1);
-        }else if(state.mode==='map'||state.mode==='focus'){
+        }else if(isIsoMode()){
+          // Pan only: the isometric camera has no rotation input at all, the ground-plane
+          // delta is projected through the orthographic ray and clamped to the bounds.
           if(state.moved>6&&state.selected)closeStory();if(state.moved>6&&state.activePlace)closePlace();
           var a=groundPoint(lastX,lastY),b=groundPoint(e.clientX,e.clientY);
           if(a&&b)state.mapDesired.add(a.sub(b));
@@ -288,19 +515,19 @@
     }
     listen(canvas,'pointerup',function(e){release(e,false);});listen(canvas,'pointercancel',function(e){release(e,true);});
     listen(canvas,'wheel',function(e){
-      if(state.mode==='map'||state.mode==='focus'){e.preventDefault();state.mapTargetDistance=T.MathUtils.clamp(state.mapTargetDistance*Math.exp(e.deltaY*.0011),16,Math.max(mapMaxDistance,wholeMapDistance()));}
+      if(isIsoMode()){e.preventDefault();stepIsoZoom(e.deltaY<0);}
       else if(opts.zoom&&state.mode==='overview'){e.preventDefault();state.targetDistance=T.MathUtils.clamp(state.targetDistance+e.deltaY*.002,3.6,6.5);}
     },{passive:false});
     canvas.tabIndex=0;
     listen(canvas,'keydown',function(e){
       if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','Home'].includes(e.key))return;
       e.preventDefault();
-      if(state.mode==='map'||state.mode==='focus'){
+      if(isIsoMode()){
         var step=state.mapTargetDistance*.065;
         if(e.key==='ArrowLeft')state.mapDesired.x-=step;if(e.key==='ArrowRight')state.mapDesired.x+=step;
         if(e.key==='ArrowUp')state.mapDesired.z-=step;if(e.key==='ArrowDown')state.mapDesired.z+=step;
-        if(e.key==='+'||e.key==='=')state.mapTargetDistance=Math.max(16,state.mapTargetDistance*.85);
-        if(e.key==='-')state.mapTargetDistance=Math.min(Math.max(mapMaxDistance,wholeMapDistance()),state.mapTargetDistance/ .85);
+        if(e.key==='+'||e.key==='=')stepIsoZoom(true);
+        if(e.key==='-')stepIsoZoom(false);
         if(e.key==='Home')mapOverview();else clampMap();
       }else{if(e.key==='ArrowLeft')state.yaw+=.10;if(e.key==='ArrowRight')state.yaw-=.10;if(e.key==='ArrowUp')state.pitch-=.10;if(e.key==='ArrowDown')state.pitch+=.10;}
     });
@@ -308,6 +535,8 @@
       var parent=canvas.parentElement||canvas.parentNode||canvas,w=parent.clientWidth||800,h=parent.clientHeight||800;
       var viewportChanged=w!==viewWidth||h!==viewHeight;
       viewWidth=w;viewHeight=h;camera.aspect=w/h;camera.updateProjectionMatrix();
+      // The orthographic frustum is refitted from the new aspect by invalidate() ->
+      // syncIsoCamera() -> isoBaseFrustum(); only the map extent needs resetting here.
       if(viewportChanged&&map&&state.mode==='map'&&!state.region&&mapView==='overview'){state.mapTargetDistance=wholeMapDistance();if(reduced)state.mapDistance=state.mapTargetDistance;}
       // Resizing clears WebGL's drawing buffer. Apply it only inside the next
       // render callback, before drawing, so the compositor keeps a painted frame.
@@ -328,8 +557,32 @@
     function recoveryTimeout(){if(disposed||!contextLost)return;if(document.hidden||!visible){recoveryTimer=setTimeout(recoveryTimeout,3000);return;}if(opts.onRecoverNeeded)opts.onRecoverNeeded(lostSnapshot);}
     listen(canvas,'webglcontextlost',function(e){e.preventDefault();contextLost=true;contextLosses++;lostSnapshot=snapshot();pointerPoints.clear();state.dragging=false;canvas.classList.remove('is-dragging');if(raf)cancelAnimationFrame(raf);raf=0;if(opts.onContextState)opts.onContextState('lost',lostSnapshot);recoveryTimer=setTimeout(recoveryTimeout,opts.recoveryTimeout||7000);return false;});
     listen(canvas,'webglcontextrestored',function(){if(recoveryTimer)clearTimeout(recoveryTimer);recoveryTimer=0;contextLost=false;if(renderer.shadowMap)renderer.shadowMap.needsUpdate=true;if(opts.onContextState)opts.onContextState('restored',lostSnapshot);lastRenderAt=-1000;});
-    function restoreView(view){if(!view)return;if(view.mapView)setMapView(view.mapView);if(environment&&view.environment)environment.configure(view.environment);if(view.mode==='overview'||view.mode==='descending'){overview(true);state.yaw=view.yaw||0;state.pitch=view.pitch||0;state.distance=state.targetDistance=view.distance||overviewDistance;}else{navigate(view.region||'collaboration',true);state.region=view.region;if(view.place)openPlace(view.place,view.npc);if(view.target)state.mapDesired.fromArray(view.target);state.mapTarget.copy(state.mapDesired);state.mapDistance=state.mapTargetDistance=view.distance;state.fade=1;if(view.selected){state.selected=view.selected;state.mode='focus';if(opts.onSelect)opts.onSelect(nodes.find(function(n){return n.id===view.selected;}));}if(!view.region&&opts.onRegionChange)opts.onRegionChange({id:'world',name:'大陆全貌'});notifyMode();}invalidate();}
-    function destroy(){if(disposed)return;disposed=true;if(raf)cancelAnimationFrame(raf);if(recoveryTimer)clearTimeout(recoveryTimer);listeners.forEach(function(stop){stop();});if(ro)ro.disconnect();if(io)io.disconnect();if(transitionFrame)transitionFrame.remove();if(environment)environment.dispose();if(groundScatter){groundScatter.dispose();groundScatter=null;}releaseGpu(globe);releaseGpu(mapGroup);renderer.dispose();if(renderer.forceContextLoss)renderer.forceContextLoss();if(pinHost)pinHost.replaceChildren();}
+    /* Restores a snapshot. In isometric terms that is the map target plus a zoom tier:
+       `distance` is the public scalar that encodes the tier, `zoom` is accepted as a
+       fallback so a snapshot taken at a different aspect (and therefore a different
+       whole-island distance) still lands on the same framing. Target and zoom are
+       applied in one step, exactly like the reduced-motion path. */
+    function restoreView(view){
+      if(!view)return;
+      if(view.mapView)setMapView(view.mapView);
+      if(environment&&view.environment)environment.configure(view.environment);
+      if(view.mode==='overview'||view.mode==='descending'){
+        overview(true);state.yaw=view.yaw||0;state.pitch=view.pitch||0;state.distance=state.targetDistance=view.distance||overviewDistance;
+      }else{
+        var restored=view.distance!==undefined&&view.distance!==null?view.distance:distanceForZoom(view.zoom||1,isoWholeDistance());
+        navigate(view.region||'collaboration',true);
+        state.region=view.region;
+        if(view.place)openPlace(view.place,view.npc);
+        if(view.target)state.mapDesired.fromArray(view.target);
+        state.mapTarget.copy(state.mapDesired);
+        state.mapDistance=state.mapTargetDistance=restored;state.fade=1;
+        if(view.selected){state.selected=view.selected;state.mode='focus';if(opts.onSelect)opts.onSelect(nodes.find(function(n){return n.id===view.selected;}));}
+        if(!view.region&&opts.onRegionChange)opts.onRegionChange({id:'world',name:'大陆全貌'});
+        notifyMode();
+      }
+      invalidate();
+    }
+    function destroy(){if(disposed)return;disposed=true;if(raf)cancelAnimationFrame(raf);if(recoveryTimer)clearTimeout(recoveryTimer);listeners.forEach(function(stop){stop();});if(ro)ro.disconnect();if(io)io.disconnect();if(transitionFrame)transitionFrame.remove();if(environment)environment.dispose();if(groundScatter){groundScatter.dispose();groundScatter=null;}if(islandLandmarks){islandLandmarks.dispose();islandLandmarks=null;}releaseGpu(globe);releaseGpu(mapGroup);renderer.dispose();if(renderer.forceContextLoss)renderer.forceContextLoss();if(pinHost)pinHost.replaceChildren();}
     listen(window,'pagehide',function(e){if(!e.persisted)destroy();else{releaseGpu(globe);if(map)releaseGpu(mapGroup);if(raf)cancelAnimationFrame(raf);raf=0;}return false;});
     listen(window,'pageshow',function(){lastRenderAt=-1000;resize();});
     function shortAngle(a,b){var d=(b-a)%(Math.PI*2);return d>Math.PI?d-Math.PI*2:d<-Math.PI?d+Math.PI*2:d;}
@@ -346,16 +599,20 @@
         // The horizontal region navigator remains available for every destination.
         if(isMap&&viewWidth<600&&state.mapDistance>150)show=false;
         if(!isMap&&pos.clone().normalize().dot(camera.position.clone().normalize())<.18)show=false;
-        var screen=pos.project(camera);if(Math.abs(screen.x)>1.06||Math.abs(screen.y)>1.06||screen.z>1)show=false;
+        // Labels project through whichever camera is live: the orthographic map framing
+        // changes where a region lands, the perspective globe view does not.
+        var screen=pos.project(activeCamera());if(Math.abs(screen.x)>1.06||Math.abs(screen.y)>1.06||screen.z>1)show=false;
         var sx=(screen.x*.5+.5)*rect.width,sy=(-screen.y*.5+.5)*rect.height;
         if(sx<50||sx>rect.width-50||sy<18||sy>rect.height-18)show=false;
         if(button.hidden===show)button.hidden=!show;button.style.opacity=show?String(state.fade):'0';button.style.pointerEvents=show?'auto':'none';
         button.style.transform='translate('+((screen.x*.5+.5)*rect.width).toFixed(1)+'px,'+((-screen.y*.5+.5)*rect.height).toFixed(1)+'px) translate(-50%,-50%)';
         button.classList.toggle('is-active',state.region===r.id);
       });
-      residentLabels.forEach(function(label){var p=(label.npc?label.npc.position:label.place.position).clone();p.y+=1.65;var screen=p.project(camera),show=isMap&&!state.activePlace&&state.mapDistance<90&&Math.abs(screen.x)<.92&&Math.abs(screen.y)<.85&&screen.z<1;label.button.hidden=!show;if(show)label.button.style.transform='translate('+((screen.x*.5+.5)*rect.width).toFixed(1)+'px,'+((-screen.y*.5+.5)*rect.height).toFixed(1)+'px) translate(-50%,-100%)';});
+      residentLabels.forEach(function(label){var p=(label.npc?label.npc.position:label.place.position).clone();p.y+=1.65;var screen=p.project(activeCamera()),show=isMap&&!state.activePlace&&state.mapDistance<90&&Math.abs(screen.x)<.92&&Math.abs(screen.y)<.85&&screen.z<1;label.button.hidden=!show;if(show)label.button.style.transform='translate('+((screen.x*.5+.5)*rect.width).toFixed(1)+'px,'+((-screen.y*.5+.5)*rect.height).toFixed(1)+'px) translate(-50%,-100%)';});
     }
-    function moving(){if(state.mode==='descending')return true;if(state.mode==='overview')return Math.abs(state.distance-state.targetDistance)>.001;return Math.abs(state.mapDistance-state.mapTargetDistance)>.02||state.mapTarget.distanceToSquared(state.mapDesired)>.0004||mapDirection.distanceToSquared(mapDesiredDirection)>.00001||state.fade<.999;}
+    // The map camera can no longer orbit, so its only motion is the target easing, the
+    // zoom tier easing and the fade.
+    function moving(){if(state.mode==='descending')return true;if(state.mode==='overview')return Math.abs(state.distance-state.targetDistance)>.001;return Math.abs(state.mapDistance-state.mapTargetDistance)>.02||state.mapTarget.distanceToSquared(state.mapDesired)>.0004||state.fade<.999;}
     function loop(timestamp){
       raf=0;if(disposed||contextLost||document.hidden||(!visible&&state.mode!=='descending'))return;
       var rotating=state.mode==='overview'&&state.autoRotate&&!state.dragging;
@@ -375,26 +632,34 @@
         }else if(state.autoRotate&&!state.dragging)state.yaw+=dt*.10;
         globe.quaternion.setFromAxisAngle(axisX,state.pitch).multiply(new T.Quaternion().setFromAxisAngle(axisY,-state.yaw));
         state.distance+=(state.targetDistance-state.distance)*(1-Math.exp(-dt*4));
-        camera.position.set(0,0,state.distance);look.set(0,0,0);camera.clearViewOffset();camera.lookAt(look);
+        camera.position.set(0,0,state.distance);look.set(0,0,0);camera.lookAt(look);
       }
-      if(cameraChanged&&(state.mode==='map'||state.mode==='focus')){
+      if(cameraChanged&&isIsoMode()){
+        // Motion is only the target easing plus the zoom-tier easing: the orthographic
+        // camera keeps its 45°/35.264° orientation, so nothing here can rotate or tilt
+        // the island. The sidebar offset is applied inside syncIsoCamera as a world-space
+        // pan (setViewOffset would shear an orthographic projection).
         state.mapDistance+=(state.mapTargetDistance-state.mapDistance)*(1-Math.exp(-dt*5));
         state.mapTarget.lerp(state.mapDesired,1-Math.exp(-dt*5));
-        mapDirection.lerp(mapDesiredDirection,1-Math.exp(-dt*5)).normalize();
-        camera.position.copy(state.mapTarget).addScaledVector(mapDirection,state.mapDistance);camera.lookAt(state.mapTarget);
-        if((state.selected||state.activePlace)&&window.innerWidth>800){camera.setViewOffset(viewWidth,viewHeight,viewWidth*.15,0,viewWidth,viewHeight);}else if(state.activePlace&&window.innerWidth<=560){camera.setViewOffset(viewWidth,viewHeight,0,viewHeight*.17,viewWidth,viewHeight);}else camera.clearViewOffset();
+        syncIsoCamera();
         state.fade=1;
         if(!state.selected&&state.dragging){var near=map.regions.reduce(function(a,b){return a.position.distanceToSquared(state.mapDesired)<b.position.distanceToSquared(state.mapDesired)?a:b;});if(near.id!==state.region)notifyRegion(near.id);}
       }
       if(canvas.style.opacity!=='1')canvas.style.opacity='1';
       if(handoffActive){handoffTime+=dt;var blend=T.MathUtils.smoothstep(handoffTime,0,.42);if(transitionFrame)transitionFrame.style.opacity=String(1-blend);if(blend>=1)finishTransition();}
+      // Enrichment keeps the legacy map scalar (its LOD and "close enough to greet a
+      // resident" threshold are tuned to 30..70), the environment gets the true
+      // orthographic eye distance so its fog band lands on the island's depth slab, and
+      // it always receives the live camera.
       if(enrichment&&mapGroup.visible&&(cameraChanged||extraAnimation))extraAnimation=!!enrichment.update(timestamp/1000,{target:state.mapTarget,distance:state.mapDistance,active:state.activeNpc||state.activePlace,reducedMotion:reduced});else if(!mapGroup.visible)extraAnimation=false;
-      if(environment){environmentAnimating=!!environment.update(timestamp/1000,{mode:state.mode,quality:quality,distance:state.mapDistance,interacting:state.dragging||moving(),settled:!moving(),camera:camera,height:viewHeight,pixelRatio:pixelRatio});var skyState=environment.getFrameState?environment.getFrameState():environment.getState();if(renderer.shadowMap&&renderer.shadowMap.enabled){var sun=sunScratch.copy(key.position).normalize();if(shadowSun.distanceToSquared(sun)>.0009||shadowWeather!==skyState.weather){shadowSun.copy(sun);shadowWeather=skyState.weather;renderer.shadowMap.needsUpdate=true;}}if(opts.onEnvironmentChange&&(skyState.quality!==state.lastEnvironmentQuality||skyState.mode!==state.lastEnvironmentMode||(skyState.cycle&&timestamp-(state.lastEnvironmentNotify||0)>1000))){state.lastEnvironmentNotify=timestamp;state.lastEnvironmentQuality=skyState.quality;state.lastEnvironmentMode=skyState.mode;opts.onEnvironmentChange(environment.getState());}}
-      var activeRoot=mapGroup.visible?mapGroup:globe,distance=mapGroup.visible?state.mapDistance:Math.max(.5,state.distance-1.15),projection=viewHeight*pixelRatio/(2*Math.tan(camera.fov*Math.PI/360)*distance);if(cameraChanged){lodHidden=0;activeRoot.traverse(function(o){if(o.userData.smallDetail){o.visible=quality==='detail'||o.userData.partRadius*projection>=(active?2.0:.65);if(!o.visible)lodHidden++;}});}
-      if(cameraChanged||extraAnimation)activeRoot.updateMatrixWorld(true);if(cameraChanged)camera.updateMatrixWorld(true);
+      if(environment){environmentAnimating=!!environment.update(timestamp/1000,{mode:state.mode,quality:quality,distance:isIsoMode()?ISO.distance:state.mapDistance,interacting:state.dragging||moving(),settled:!moving(),camera:activeCamera(),height:viewHeight,pixelRatio:pixelRatio});var skyState=environment.getFrameState?environment.getFrameState():environment.getState();if(renderer.shadowMap&&renderer.shadowMap.enabled){var sun=sunScratch.copy(key.position).normalize();if(shadowSun.distanceToSquared(sun)>.0009||shadowWeather!==skyState.weather){shadowSun.copy(sun);shadowWeather=skyState.weather;renderer.shadowMap.needsUpdate=true;}}if(opts.onEnvironmentChange&&(skyState.quality!==state.lastEnvironmentQuality||skyState.mode!==state.lastEnvironmentMode||(skyState.cycle&&timestamp-(state.lastEnvironmentNotify||0)>1000))){state.lastEnvironmentNotify=timestamp;state.lastEnvironmentQuality=skyState.quality;state.lastEnvironmentMode=skyState.mode;opts.onEnvironmentChange(environment.getState());}}
+      // pixels per world unit: the perspective camera divides its cone at the target
+      // distance, the orthographic camera simply maps its frustum height onto the viewport.
+      var activeRoot=mapGroup.visible?mapGroup:globe,projection=mapGroup.visible?(viewHeight*pixelRatio/Math.max(.001,isoView.height)):(viewHeight*pixelRatio/(2*Math.tan(camera.fov*Math.PI/360)*Math.max(.5,state.distance-1.15)));if(cameraChanged){lodHidden=0;activeRoot.traverse(function(o){if(o.userData.smallDetail){o.visible=quality==='detail'||o.userData.partRadius*projection>=(active?2.0:.65);if(!o.visible)lodHidden++;}});}
+      if(cameraChanged||extraAnimation)activeRoot.updateMatrixWorld(true);if(cameraChanged)activeCamera().updateMatrixWorld(true);
       if(groundScatter)groundScatter.update(timestamp/1000,{animate:animateWater&&!reduced,active:active||cameraChanged});
       if(story)story.tick(animateWater?animationTime:0);if(map)map.tick(animateWater?animationTime:0);
-      if(cameraChanged)pins();var drawStart=performance.now();try{renderer.render(scene,camera);}catch(error){if(opts.onFatalError){opts.onFatalError(error);return;}throw error;}drawMS=performance.now()-drawStart;frames++;
+      if(cameraChanged)pins();var drawStart=performance.now();try{renderer.render(scene,activeCamera());}catch(error){if(opts.onFatalError){opts.onFatalError(error);return;}throw error;}drawMS=performance.now()-drawStart;frames++;
       if(renderer.shadowMap)renderer.shadowMap.needsUpdate=false;
       if(handoffPending){captureTransition(false);handoffPending=false;navigate(state.pending,true);if(disposed)return;invalidate();}
       if(moving()||rotating||animateWater||extraAnimation||environmentAnimating||handoffActive)schedule();
@@ -406,14 +671,18 @@
       setAutoRotate:function(on){state.autoRotate=!!on;invalidate();},isAutoRotating:function(){return state.autoRotate;},
       getMode:function(){return state.mode;},getDistance:function(){return state.mode==='map'||state.mode==='focus'?state.mapTargetDistance:state.targetDistance;},
       getMapState:function(){return{mode:state.mode,region:state.region,target:state.mapDesired.toArray(),currentTarget:state.mapTarget.toArray(),distance:state.mapTargetDistance,currentDistance:state.mapDistance,bounds:map?map.bounds:null};},
-      getScene:function(){return scene;},getCamera:function(){return camera;},getViewState:snapshot,restoreView:restoreView,
+      // getCamera() is always the live camera: orthographic in map/focus, perspective on
+      // the globe and during the descent.
+      getScene:function(){return scene;},getCamera:function(){return activeCamera();},getViewState:snapshot,restoreView:restoreView,
       get selected(){return state.selected;},
       surfaceHeight:function(d){return story.height(d);},
-      getRenderStatus:function(){return{settled:!dirty&&!bufferResizePending&&!(environment&&environment.getFrameState&&environment.getFrameState().transitioning)&&!moving()&&!state.dragging&&!handoffActive&&state.mode!=='descending'&&!(state.mode==='overview'&&state.autoRotate),transition:state.mode==='descending'?'approach':handoffActive?'blend':null,environmentAnimating:environmentAnimating,environmentFPS:environmentFPS,pinsUpdates:pinsUpdates,environment:environment?environment.getState():null,frames:frames,webgl:!contextLost,contextLost:contextLost,contextLosses:contextLosses,paused:!raf,visible:visible,documentHidden:!!document.hidden,dirty:dirty,pixelRatio:pixelRatio,quality:quality,adaptiveScale:dynamicScale,measuredFPS:measuredFPS,lodHidden:lodHidden,drawMS:drawMS,enrichment:enrichment?enrichment.stats:null,village:(mapGroup.visible?mapVillage:globeVillage)?(mapGroup.visible?mapVillage:globeVillage).stats:null,frontier:(mapGroup.visible?mapFrontier:globeFrontier)?(mapGroup.visible?mapFrontier:globeFrontier).stats:null,ground:groundScatter?groundScatter.stats:null,maxFPS:maxFPS,geometryBytes:geometryBytes(globe)+geometryBytes(mapGroup),residentGeometryBytes:geometryBytes(gpuResident==='globe'?globe:mapGroup),rendererMemory:renderer.info&&renderer.info.memory,programs:renderer.info&&renderer.info.programs?renderer.info.programs.length:0,compatibility:!!opts.compatibility,rendererAttempts:rendererAttempts,shadows:!!(renderer.shadowMap&&renderer.shadowMap.enabled),calls:renderer.info?renderer.info.render.calls:null,triangles:renderer.info?renderer.info.render.triangles:null,mode:state.mode};},
+      getRenderStatus:function(){return{settled:!dirty&&!bufferResizePending&&!(environment&&environment.getFrameState&&environment.getFrameState().transitioning)&&!moving()&&!state.dragging&&!handoffActive&&state.mode!=='descending'&&!(state.mode==='overview'&&state.autoRotate),transition:state.mode==='descending'?'approach':handoffActive?'blend':null,environmentAnimating:environmentAnimating,environmentFPS:environmentFPS,pinsUpdates:pinsUpdates,environment:environment?environment.getState():null,frames:frames,webgl:!contextLost,contextLost:contextLost,contextLosses:contextLosses,paused:!raf,visible:visible,documentHidden:!!document.hidden,dirty:dirty,pixelRatio:pixelRatio,quality:quality,adaptiveScale:dynamicScale,measuredFPS:measuredFPS,lodHidden:lodHidden,drawMS:drawMS,enrichment:enrichment?enrichment.stats:null,village:(mapGroup.visible?mapVillage:globeVillage)?(mapGroup.visible?mapVillage:globeVillage).stats:null,frontier:(mapGroup.visible?mapFrontier:globeFrontier)?(mapGroup.visible?mapFrontier:globeFrontier).stats:null,ground:groundScatter?groundScatter.stats:null,landmarks:islandLandmarks?islandLandmarks.stats:null,maxFPS:maxFPS,geometryBytes:geometryBytes(globe)+geometryBytes(mapGroup),residentGeometryBytes:geometryBytes(gpuResident==='globe'?globe:mapGroup),rendererMemory:renderer.info&&renderer.info.memory,programs:renderer.info&&renderer.info.programs?renderer.info.programs.length:0,compatibility:!!opts.compatibility,rendererAttempts:rendererAttempts,shadows:!!(renderer.shadowMap&&renderer.shadowMap.enabled),calls:renderer.info?renderer.info.render.calls:null,triangles:renderer.info?renderer.info.render.triangles:null,mode:state.mode,camera:{type:isIsoMode()?'orthographic':'perspective',azimuth:ISO.azimuth,elevation:ISO.elevation,eyeDistance:isIsoMode()?ISO.distance:state.distance,zoom:isIsoMode()?isoView.zoom:null,targetZoom:isIsoMode()?zoomForDistance(state.mapTargetDistance,isoWholeDistance()):null,frustumHeight:isIsoMode()?isoView.height:null,frustumWidth:isIsoMode()?isoView.width:null,fogNear:scene.fog?scene.fog.near:null,fogFar:scene.fog?scene.fog.far:null}};},
       stats:function(){var meshes=0,tris=0,instances=0;var root=mapGroup.visible?mapGroup:globe;root.traverse(function(o){if(!o.isMesh)return;meshes++;var g=o.geometry;var count=o.isInstancedMesh?o.count:1;if(o.isInstancedMesh)instances+=o.count;tris+=(g.index?g.index.count/3:g.attributes.position.count/3)*count;});return{meshes:meshes,instances:instances,triangles:Math.round(tris)};},
-      openCoast:openCoast,setMapView:setMapView,getMapView:function(){return mapView;},setEnvironment:setEnvironment,getEnvironment:function(){return environment?environment.getState():null;},getMapWeather:function(){return environment&&environment.getMapWeather?environment.getMapWeather():null;},getGroundDetail:function(){return groundScatter?groundScatter.stats:null;},
+      openCoast:openCoast,setMapView:setMapView,getMapView:function(){return mapView;},setEnvironment:setEnvironment,getEnvironment:function(){return environment?environment.getState():null;},getMapWeather:function(){return environment&&environment.getMapWeather?environment.getMapWeather():null;},getGroundDetail:function(){return groundScatter?groundScatter.stats:null;},getIslandLandmarks:function(){return islandLandmarks?islandLandmarks.stats:null;},
       resize:resize,destroy:destroy
     };
   }
-  window.MarioPlanet={create:create,latLonToVec3:latLonToVec3};
+  // Pure isometric framing helpers are exported so they can be asserted in Node
+  // (test/iso-camera.mjs) without a browser, a GPU or a renderer stub.
+  window.MarioPlanet={create:create,latLonToVec3:latLonToVec3,iso:{config:ISO,direction:isoDirection,axes:isoAxes,extents:isoExtents,frustum:isoFrustum,zoomForDistance:zoomForDistance,distanceForZoom:distanceForZoom,fogBand:function(){return {near:isoFogNear(),far:isoFogFar()};}}};
 })();

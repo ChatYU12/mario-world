@@ -482,11 +482,11 @@
      * list inside the 14k budget. */
     var factor = quality === 'smooth' ? 0.55 : quality === 'detail' ? 1.1 : 1;
     var counts = {
-      grass: Math.round(2200 * factor),
-      flowers: Math.round(110 * factor),
-      pebbles: Math.round(140 * factor),
-      reeds: Math.round(100 * factor),
-      debris: Math.round(150 * factor)
+      grass: Math.round(1400 * factor),
+      flowers: Math.round(80 * factor),
+      pebbles: Math.round(100 * factor),
+      reeds: Math.round(70 * factor),
+      debris: Math.round(100 * factor)
     };
     var shadowCount = buildings.length;
     var familyTriangles = { grass: 8, flowers: 10, pebbles: 8, reeds: 6, debris: 2 };

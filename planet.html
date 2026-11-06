@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="assets/apple.css?v=20261104-environment1">
 <link rel="stylesheet" href="assets/town-compat.css?v=20261104-environment1">
 <link rel="stylesheet" href="assets/environment.css?v=20261104-environment1">
+<link rel="stylesheet" href="assets/island-ui.css?v=20261106-iso1">
 <script>document.documentElement.classList.add('js-reveal');</script>
 </head>
 <body class="explore-page">
@@ -25,7 +26,7 @@
 </header>
 <main class="explore-main" id="explore-main">
 <div class="explore-intro"><h1>从星球，走进大陆。</h1><p>点击地域，走进有居民的小镇。<br>沿路探索建筑与六项本地业务演示。</p></div>
-<div class="exhibit" id="planet-exhibit"><canvas class="world-canvas" id="stage" aria-label="星球总览：拖动旋转，点击地域进入连续地图"></canvas><div class="world-loading" id="world-loading" role="status">正在搭建星球…</div><div class="world-pins" id="pins"></div><p class="gesture-hint" id="globe-hint">拖动旋转，点击地域进入地图</p><div class="world-fallback" id="world-fallback" hidden><svg aria-hidden="true"><use href="#castle-icon"/></svg><strong>能力探索仍然可用</strong><p>3D 场景暂未启动。选择三个文字入口，仍可阅读能力介绍。</p></div></div>
+<div class="exhibit" id="planet-exhibit"><canvas class="world-canvas" id="stage" aria-label="星球总览：拖动旋转，点击地域进入连续地图"></canvas><div class="world-loading" id="world-loading" role="status">正在搭建星球…</div><div class="world-pins" id="pins"></div><p class="gesture-hint" id="globe-hint">拖动旋转，点击地域进入地图</p><div class="world-fallback" id="world-fallback" hidden><svg aria-hidden="true"><use href="#castle-icon"/></svg><strong>能力探索仍然可用</strong><p>3D 场景暂未启动。选择三个文字入口，仍可阅读能力介绍。</p></div><div class="island-plate" aria-hidden="true"><svg class="island-compass" viewBox="0 0 64 64" focusable="false"><circle cx="32" cy="32" r="27" fill="none" stroke="#cfdadd" stroke-width="2"/><path d="M32 10 L37.5 31 L32 27.5 L26.5 31 Z" fill="#c0544f"/><path d="M32 54 L26.5 33 L32 36.5 L37.5 33 Z" fill="#b9c7c9"/><text x="32" y="8.5" text-anchor="middle" font-size="8" font-weight="700" fill="#2b4a51">N</text></svg><span class="island-plate-copy"><strong>山海生态体验岛</strong><span>等距视角 · 滚轮切换远近</span></span></div></div>
 <nav class="explore-guide" id="explore-guide" aria-label="能力方向"><span class="small-badge">选择入口，进入地图</span><div class="explore-entries"><button type="button" data-capability="collaboration" aria-pressed="false" style="--tint:#b4647a"><span><strong>智能协作</strong><span>城堡与村落</span></span><span class="entry-dot" aria-hidden="true"></span></button><button type="button" data-capability="automation" aria-pressed="false" style="--tint:#9c742f"><span><strong>业务自动化</strong><span>工坊与道路</span></span><span class="entry-dot" aria-hidden="true"></span></button><button type="button" data-capability="connection" aria-pressed="false" style="--tint:#2f6f8c"><span><strong>数据连接</strong><span>港口与水路</span></span><span class="entry-dot" aria-hidden="true"></span></button></div></nav>
 <p class="explore-footnote">能力方向展示<br>应用场景为示意</p>
 <div class="explore-controls" aria-label="星球控制"><button id="overview-button" type="button">返回星球总览</button><button id="rotate-button" type="button" aria-pressed="false">自动旋转</button></div>
@@ -50,11 +51,12 @@
 <script src="assets/world-enrichment.js?v=20261106-detail1"></script>
 <script src="assets/village-life.js?v=20261106-detail1"></script>
 <script src="assets/frontier-scenes.js?v=20261106-detail1"></script>
-<script src="assets/ground-scatter.js?v=20261106-ground1"></script>
+<script src="assets/island-landmarks.js?v=20261106-iso1"></script>
+<script src="assets/ground-scatter.js?v=20261106-iso1"></script>
 <script src="assets/render-quality.js?v=20261106-ground1"></script>
 <script src="assets/map-weather.js?v=20261106-ground1"></script>
 <script src="assets/world-environment.js?v=20261106-detail1"></script>
-<script src="assets/planet3d.js?v=20261106-ground1"></script>
+<script src="assets/planet3d.js?v=20261106-iso1"></script>
 <script src="assets/town-ui.js?v=20261104-environment1"></script>
 <script src="assets/environment-ui.js?v=20261104-environment1"></script>
 <script src="assets/site.js?v=20261106-detail1"></script>
