@@ -79,17 +79,18 @@
     }
 
     // Shared indexed terrain with smooth, analytical biome weights and coastline.
-    var nx = 160, nz = 136, positions = [], colors = [], uvs = [], indices = [];
+    var nx = 224, nz = 192, positions = [], colors = [], uvs = [], indices = [];
     var color = new T.Color(), grass = new T.Color(0x6fa46c), forest = new T.Color(0x397953);
     var sand = new T.Color(0xe4cda5), snowColor = new T.Color(0xe6f1ee), basalt = new T.Color(0x67666d);
     var shoreColor = new T.Color(0xd8c8a7), riverBank = new T.Color(0x8f9d82), shoreTint=new T.Color(), underwater = new T.Color(0x477d89);
+    var canyonTint=new T.Color(0xb47758),meadowTint=new T.Color(0x92b76b);
     for (var iz = 0; iz <= nz; iz++) {
       var z = bounds.minZ + iz / nz * (bounds.maxZ - bounds.minZ);
       for (var ix = 0; ix <= nx; ix++) {
         var x = bounds.minX + ix / nx * (bounds.maxX - bounds.minX), biome=geo.biomeAt(x,z), h=biome.height;
         positions.push(x, h, z); uvs.push(ix / nx, iz / nz);
         color.copy(grass).lerp(forest,biome.forest);
-        color.lerp(sand,biome.sand).lerp(basalt,biome.rock).lerp(snowColor,biome.snow);
+        color.lerp(sand,biome.sand).lerp(basalt,biome.rock).lerp(snowColor,biome.snow).lerp(canyonTint,biome.canyon||0).lerp(meadowTint,(biome.meadow||0)*.35);
         if(h<1.8){shoreTint.copy(shoreColor).lerp(riverBank,biome.river*.86);color.lerp(shoreTint,biome.shore*.72);}
         if(h<SEA)color.lerp(underwater,.42+.48*smooth(0,2.8,SEA-h));
         color.multiplyScalar(.97 + .035 * Math.sin(x * 1.8 + z * 2.4));

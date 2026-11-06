@@ -1187,6 +1187,8 @@ animation:none!important}
 .map-toolbar button:hover,.map-toolbar button[aria-pressed=true]{background:var(--green);color:white;border-color:var(--green)}
 .map-regions{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px}
 .map-regions button{flex-shrink:0;font-size:11px;min-height:32px}
+@media(min-width:800px){.map-regions{flex-wrap:wrap;overflow:visible}}
+@media(max-width:799px){.map-regions{scrollbar-width:thin;scroll-snap-type:x proximity}.map-regions button{scroll-snap-align:start}}
 .map-instructions{font-size:10px;color:var(--muted);margin-top:8px}
 .explore-main.is-map .explore-intro,.explore-main.is-map .explore-guide,.explore-main.is-map .explore-controls,.explore-main.is-map .explore-footnote{display:none}
 .hero-exhibit.is-map .world-caption{display:none}

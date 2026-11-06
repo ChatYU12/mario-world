@@ -13,10 +13,10 @@
   var canvas = document.getElementById(isExplore ? 'stage' : 'hero-globe');
   var detail = document.getElementById('detail');
   var planet = null, selected = null, hintDismissed = false, openWorldWhenLanded = false;
-  var regionNames = { collaboration:'城堡与村落', automation:'工坊与道路', connection:'港口与水路', snow:'雪山山麓', desert:'沙漠边境', lava:'熔岩山口' };
+  var regionNames = { collaboration:'城堡与村落', automation:'工坊与道路', connection:'港口与水路', snow:'雪山山麓', desert:'沙漠边境', lava:'熔岩山口', forest:'巨木蘑菇林', gardens:'花田风车谷', canyon:'红岩矿谷', lake:'高山湖营地' };
   var toolbar = document.createElement('section');
   toolbar.id='map-toolbar'; toolbar.className='map-toolbar'; toolbar.hidden=true; toolbar.setAttribute('aria-label','地图导览');
-  toolbar.innerHTML='<div class="map-toolbar-top"><div><span class="map-eyebrow">连续大陆</span><strong id="map-location">城堡与村落</strong></div><div class="map-toolbar-actions"><button type="button" id="map-view">俯瞰视角</button><button type="button" id="map-extent">地图全貌</button><button type="button" id="map-exit">返回星球</button></div></div><nav class="map-regions" aria-label="跨区导航"></nav><p class="map-instructions">拖动平移 · 滚轮 / 双指缩放 · 点击建筑了解能力</p>';
+  toolbar.innerHTML='<div class="map-toolbar-top"><div><span class="map-eyebrow">连续大陆</span><strong id="map-location">城堡与村落</strong></div><div class="map-toolbar-actions"><button type="button" id="map-view">俯瞰视角</button><button type="button" id="map-extent">地图全貌</button><button type="button" id="map-exit">返回星球</button></div></div><nav class="map-regions" aria-label="跨区导航"></nav><p class="map-instructions">十片地域，自由探索 · 拖动平移 · 滚轮 / 双指缩放</p>';
   canvas.parentElement.appendChild(toolbar);
   Object.keys(regionNames).forEach(function(id){var b=document.createElement('button');b.type='button';b.dataset.region=id;b.textContent=regionNames[id];b.addEventListener('click',function(){if(planet)planet.enterRegion(id);});toolbar.querySelector('nav').appendChild(b);});
   byId('map-exit').addEventListener('click',function(){if(planet)planet.overview();});
@@ -182,7 +182,7 @@
     window.__marioWorldDiagnostics={state:'starting',profile:compatibility?'compatible':'standard',attempt:initializationAttempt};
     canvas.addEventListener('webglcontextcreationerror',function(event){window.__marioWorldDiagnostics.creationMessage=event.statusMessage||'WebGL context creation failed.';});
     try {
-      var missing=['THREE','MarioWorldModels','MarioStoryWorld','MarioConnectedMap','MarioPlanet','MarioImportedModels','MarioWorldEnrichment','MarioDemoBusinesses','MarioTownUI','MarioRenderQuality'].filter(function(name){return !window[name];});
+      var missing=['THREE','MarioWorldModels','MarioStoryWorld','MarioConnectedMap','MarioPlanet','MarioImportedModels','MarioWorldEnrichment','MarioDemoBusinesses','MarioTownUI','MarioRenderQuality','MarioVillageLife','MarioFrontierWorld'].filter(function(name){return !window[name];});
       if(missing.length){var resourceError=new Error('缺少本地场景资源：'+missing.join(', '));resourceError.code='WORLD_ASSET_MISSING';throw resourceError;}
       planet = window.MarioPlanet.create(canvas, {
         compatibility:compatibility,quality:restoreSnapshot?'smooth':preferredQuality,environment:preferredEnvironment,onEnvironmentChange:environmentChanged,mapView:preferredMapView,onMapViewChange:mapViewChanged,nodes:nodes, pinHost: byId(isExplore ? 'pins' : 'hero-pins'),

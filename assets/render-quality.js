@@ -29,7 +29,7 @@
     if(!root.MarioImportedModels)return {buildings:0};
     var kit=root.MarioImportedModels.create(T),source=new T.Group(),bins=new Map(),count=0;
     var choices=['houseA','houseB','tavern','blacksmith','watchtower','market'];
-    regions.forEach(function(r,index){for(var i=0;i<3;i++){
+    regions.filter(function(r){return !['forest','gardens','canyon','lake'].includes(r.id);}).forEach(function(r,index){for(var i=0;i<3;i++){
       var name=choices[(index+i)%choices.length];if(!root.MarioImportedModels.names.includes(name))continue;
       var object=kit.build(name,{palette:'storybook'}),d=project(r.lat+(i-1)*4,r.lon+(i===1?8:-7),1).normalize();
       object.scale.setScalar(.042);object.position.copy(d).multiplyScalar(story.height(d)+.003);object.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d);object.rotateY(i*.8);object.userData.regionId=r.id;source.add(object);count++;

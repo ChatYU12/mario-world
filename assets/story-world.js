@@ -54,14 +54,15 @@
 
 
     // A single indexed curved grid replaces independent raised discs and side bands.
-    var nx=144,nz=128,positions=[],colors=[],uvs=[],indices=[],color=new T.Color();
+    var nx=192,nz=168,positions=[],colors=[],uvs=[],indices=[],color=new T.Color();
     var grass=new T.Color(0x6fa46c),forest=new T.Color(0x397953),sand=new T.Color(0xe4cda5),rock=new T.Color(0x67666d),snow=new T.Color(0xe6f1ee),shore=new T.Color(0xd8c8a7),riverBank=new T.Color(0x8f9d82),shoreTint=new T.Color(),underwater=new T.Color(0x477d89);
+    var canyonTint=new T.Color(0xb47758),meadowTint=new T.Color(0x92b76b);
     for(var iz=0;iz<=nz;iz++){
       var z=geo.bounds.minZ+iz/nz*(geo.bounds.maxZ-geo.bounds.minZ);
       for(var ix=0;ix<=nx;ix++){
         var x=geo.bounds.minX+ix/nx*(geo.bounds.maxX-geo.bounds.minX),biome=geo.biomeAt(x,z),p=pointAt(x,z,0);
         positions.push(p.x,p.y,p.z);uvs.push(ix/nx,iz/nz);
-        color.copy(grass).lerp(forest,biome.forest).lerp(sand,biome.sand).lerp(rock,biome.rock).lerp(snow,biome.snow);
+        color.copy(grass).lerp(forest,biome.forest).lerp(sand,biome.sand).lerp(rock,biome.rock).lerp(snow,biome.snow).lerp(canyonTint,biome.canyon||0).lerp(meadowTint,(biome.meadow||0)*.35);
         if(biome.height<1.8){shoreTint.copy(shore).lerp(riverBank,biome.river*.86);color.lerp(shoreTint,biome.shore*.72);}
         if(biome.height<geo.seaLevel)color.lerp(underwater,.42+.48*geo.smooth(0,2.8,biome.depth));
         color.multiplyScalar(.98+.025*Math.sin(x*.6+z*.3));colors.push(color.r,color.g,color.b);
