@@ -2,6 +2,7 @@
    grounded contact shadows, and offline imported town architecture. */
 (function(root){
   'use strict';
+  function copyMap(source){var out={},key;if(source)for(key in source)if(Object.prototype.hasOwnProperty.call(source,key))out[key]=source[key];return out;}
   function optimize(T,group){
     var replacements=new Map(),originals=new Set(),packed=new Set();
     // 16-bit normalized color retains sub-visible precision and halves the
@@ -10,6 +11,17 @@
     group.traverse(function(o){if(!o.isMesh||!o.material)return;
       function convert(m){if(!m.isMeshStandardMaterial)return m;if(replacements.has(m))return replacements.get(m);
         var lite=new T.MeshLambertMaterial({color:m.color,emissive:m.emissive,emissiveIntensity:m.emissiveIntensity,vertexColors:m.vertexColors,map:m.map,transparent:m.transparent,opacity:m.opacity,side:m.side,depthWrite:m.depthWrite,alphaTest:m.alphaTest,flatShading:m.flatShading});
+        // The replacement must keep whatever program-level customisation the
+        // original carried: the ground micro-detail pass (connected-map.js) and
+        // the weather surface response (map-weather.js) both live in
+        // onBeforeCompile, and the weather pass chains through the previous hook.
+        // The cache key keeps those programs distinct; userData and defines are
+        // carried over so later passes can still read or extend them. Geometry,
+        // the Uint16 colour packing above and the replacement count are untouched.
+        if(typeof m.onBeforeCompile==='function')lite.onBeforeCompile=m.onBeforeCompile;
+        if(typeof m.customProgramCacheKey==='function')lite.customProgramCacheKey=m.customProgramCacheKey;
+        if(m.defines)lite.defines=copyMap(m.defines);
+        lite.userData=copyMap(m.userData);
         lite.name=(m.name||'world')+'-light';replacements.set(m,lite);originals.add(m);return lite;}
       o.material=Array.isArray(o.material)?o.material.map(convert):convert(o.material);
     });

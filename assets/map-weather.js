@@ -28,7 +28,7 @@
       }
     }
     parent.traverse(function(o){
-      if(!o.isMesh||!o.geometry||!o.geometry.attributes.position||o.userData.weatherEffect||o.name==='soft-ground-contact')return;
+      if(!o.isMesh||!o.geometry||!o.geometry.attributes.position||o.userData.weatherEffect||o.userData.groundDetail||o.name==='soft-ground-contact')return;
       var materials=Array.isArray(o.material)?o.material:[o.material];
       if(materials.every(function(m){return !m||m.depthWrite===false||m.transparent&&m.opacity<.5;}))return;
       var g=o.geometry,p=g.attributes.position,index=g.index,count=index?index.count:p.count,v=new T.Vector3(),a=[0,0,0],b=[0,0,0],c=[0,0,0];meshCount++;

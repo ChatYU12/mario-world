@@ -15,6 +15,140 @@
   function heightAt(x,z){return geography().heightAt(x,z);}
   function runtimeMap(data,time){data.tick=function(t){time.value=t;};return data;}
 
+  // ---------------------------------------------------------------------------
+  // Ground and road micro-surface shading.
+  //
+  // The mainland is a single merged continent batch plus one merged road batch,
+  // so any extra polygon would be a real budget cost. Instead the existing
+  // standard/lambert programs receive a few procedural fragment terms through
+  // onBeforeCompile: world-space value noise in three scales (mossy mottling,
+  // dry earth, soil grain), slope-driven rock/gravel desaturation and a wet sand
+  // band measured against sea level. Amplitude stays inside +-10% brightness and
+  // each term is weighted by the baked biome vertex colour, so no region table is
+  // needed and snow, sand, forest, meadow and red rock keep their hue.
+  //
+  // High frequencies fade out with view depth: an overhead view returns to the
+  // untouched palette, which is also the moire/shimmer defence. Every new
+  // identifier carries the grd/uGrd/vGrd prefix so assets/map-weather.js can
+  // stack its uSurfaceSnow/uSurfaceWet/vWeatherPosition injection on top.
+  //
+  // Cost: zero triangles, zero draw calls, zero textures, zero render targets and
+  // zero extra material instances - only the fragment colour is modulated.
+  // ---------------------------------------------------------------------------
+  var GRD_CACHE_KEY = 'grd-surface-v1';
+  var GRD_NOISE = [
+    'float grdHash21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}',
+    'float grdValue(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);',
+    'float a=grdHash21(i),b=grdHash21(i+vec2(1.0,0.0)),c=grdHash21(i+vec2(0.0,1.0)),d=grdHash21(i+vec2(1.0,1.0));',
+    'return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);}',
+    'float grdHash22(vec2 p){return fract(sin(dot(p,vec2(269.5,183.3)))*43758.5453123);}',
+    'float grdValueB(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);',
+    'float a=grdHash22(i),b=grdHash22(i+vec2(1.0,0.0)),c=grdHash22(i+vec2(0.0,1.0)),d=grdHash22(i+vec2(1.0,1.0));',
+    'return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);}'
+  ].join('\n');
+  // Terrain recipe. Everything stays a modulation of diffuseColor, which already
+  // carries the biome palette, so lighting, shadows, fog and vertex colours are
+  // untouched. The world Y offset inside the noise coordinates breaks up contour
+  // banding on steep slopes without introducing an expensive triplanar sample.
+  var GRD_TERRAIN = [
+    '#include <color_fragment>',
+    '{',
+    'vec3 grdN=normalize(vGrdNormal);',
+    'vec2 grdP=vGrdWorld.xz;',
+    'float grdDist=max(0.0,vGrdDepth);',
+    'float grdFadeNear=1.0-smoothstep(55.0,115.0,grdDist);',
+    'float grdFadeMid=1.0-smoothstep(95.0,190.0,grdDist);',
+    'float grdFadeFar=1.0-smoothstep(150.0,240.0,grdDist);',
+    'float grdFadeMicro=(1.0-smoothstep(4.0,16.0,grdDist))*grdFadeNear;',
+    'float grdMottle=grdValue(grdP*0.115+vec2(vGrdWorld.y*0.060,-vGrdWorld.y*0.045));',
+    'float grdPatch=grdValue(grdP*0.42+vec2(vGrdWorld.y*0.31,-vGrdWorld.y*0.27)+vec2(13.7,7.1));',
+    'float grdGrain=grdValueB(grdP*3.1+vec2(vGrdWorld.y*1.7,vGrdWorld.y*0.9)+vec2(4.3,17.9));',
+    'float grdMicro=grdValueB(grdP*7.3+vec2(21.7,9.1));',
+    'float grdLuma=dot(diffuseColor.rgb,vec3(0.299,0.587,0.114));',
+    'float grdGreen=smoothstep(0.012,0.075,diffuseColor.g-diffuseColor.r);',
+    'float grdWarm=smoothstep(0.030,0.160,diffuseColor.r-diffuseColor.b)*(1.0-grdGreen);',
+    'float grdPale=smoothstep(-0.015,0.045,diffuseColor.b-diffuseColor.r)*smoothstep(0.70,0.90,grdLuma);',
+    'float grdUnder=1.0-smoothstep(uGrdSea-0.35,uGrdSea+0.02,vGrdWorld.y);',
+    'float grdAmp=uGrdAmp*(1.0-0.62*grdPale)*(1.0-0.72*grdUnder);',
+    'float grdSlope=1.0-smoothstep(0.52,0.93,grdN.y);',
+    'float grdShade=(grdMottle-0.5)*0.115*grdFadeMid+(grdPatch-0.5)*0.090*grdFadeMid;',
+    'grdShade+=(grdGrain-0.5)*0.070*grdFadeNear+(grdMicro-0.5)*0.045*grdFadeMicro;',
+    'diffuseColor.rgb*=1.0+clamp(grdShade*grdAmp,-0.100,0.100);',
+    'float grdMoss=grdGreen*smoothstep(0.42,0.78,grdPatch)*grdFadeMid;',
+    'diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(0.92,1.03,0.84),clamp(0.62*grdMoss*grdAmp,0.0,0.62));',
+    'float grdDust=grdWarm*smoothstep(0.48,0.82,grdMottle)*grdFadeMid;',
+    'diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(1.065,1.00,0.92),clamp(0.58*grdDust*grdAmp,0.0,0.55));',
+    'float grdPebble=smoothstep(0.74,0.94,grdValueB(grdP*5.6+vec2(vGrdWorld.y*2.3,-vGrdWorld.y*1.9)+vec2(31.0,3.3)));',
+    'diffuseColor.rgb+=(grdPebble-0.35)*0.038*vec3(1.00,0.98,0.94)*grdFadeNear*grdAmp*(0.35+grdSlope*1.15);',
+    'vec3 grdRock=mix(diffuseColor.rgb,vec3(grdLuma),0.45)*vec3(0.97,0.96,0.94);',
+    'diffuseColor.rgb=mix(diffuseColor.rgb,grdRock,clamp(grdSlope*0.62,0.0,0.24)*grdFadeFar);',
+    'float grdWet=1.0-smoothstep(0.05,0.30,abs(vGrdWorld.y-uGrdSea-0.16));',
+    'diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(0.93,0.97,1.02),clamp(grdWet*grdFadeFar*0.55,0.0,0.55));',
+    'float grdFleck=smoothstep(0.62,0.92,grdValue(grdP*1.45+vec2(41.0,17.0)))*grdGreen*grdFadeMid;',
+    'diffuseColor.rgb*=1.0+grdFleck*0.045*grdAmp;',
+    '}'
+  ].join('\n');
+  // Road recipe. The strip UVs are u across the width (0 left, 1 right) and
+  // v = i * 0.1 along the path, so ruts are the only terms that must use u; the
+  // grit uses world XZ to stay isotropic through bends and slope stretches.
+  var GRD_ROAD = [
+    '#include <color_fragment>',
+    '{',
+    'vec2 grdP=vGrdWorld.xz;',
+    'float grdDist=max(0.0,vGrdDepth);',
+    'float grdNear=1.0-smoothstep(48.0,105.0,grdDist);',
+    'float grdU=clamp(vGrdUv.x,0.0,1.0);',
+    'float grdV=max(0.0,vGrdUv.y);',
+    'float grdFine=grdValue(grdP*6.4+vec2(7.3,19.1));',
+    'float grdCoarse=grdValue(grdP*2.3+vec2(11.1,5.7));',
+    'float grdDust=grdValue(grdP*0.9+vec2(3.1,8.4));',
+    'float grdRut=(1.0-smoothstep(0.0,0.075,abs(grdU-0.32)))+(1.0-smoothstep(0.0,0.075,abs(grdU-0.68)));',
+    'grdRut=clamp(grdRut,0.0,1.0);',
+    'float grdEdge=1.0-smoothstep(0.02,0.13,min(grdU,1.0-grdU));',
+    'float grdCross=0.5+0.5*sin((grdU-0.5)*9.0+sin(grdV*1.7)*0.9);',
+    'float grdSpeck=smoothstep(0.80,0.97,grdFine);',
+    'diffuseColor.rgb*=1.0-grdRut*0.090*grdNear;',
+    'diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(1.07,0.99,0.89),clamp(grdEdge*(0.34+0.30*grdCoarse)*grdNear,0.0,0.50));',
+    'diffuseColor.rgb*=1.0+(grdCross-0.5)*0.040*grdNear;',
+    'diffuseColor.rgb*=1.0+(grdDust-0.5)*0.070*grdNear;',
+    'diffuseColor.rgb+=(grdSpeck-0.18)*0.070*vec3(1.00,0.97,0.90)*grdNear;',
+    'diffuseColor.rgb+=(grdFine-0.5)*0.028*grdNear;',
+    '}'
+  ].join('\n');
+  // Appends the varying plumbing to whatever vertex program the material already
+  // owns. Guarded so a second onBeforeCompile call cannot redeclare varyings.
+  function grdPatchVertex(shader){
+    if(shader.vertexShader.indexOf('vGrdWorld')>=0)return;
+    shader.vertexShader='varying vec3 vGrdWorld;\nvarying vec3 vGrdNormal;\nvarying vec2 vGrdUv;\nvarying float vGrdDepth;\n'+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace('#include <defaultnormal_vertex>','#include <defaultnormal_vertex>\nvGrdNormal=inverseTransformDirection(transformedNormal,viewMatrix);');
+    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvec4 grdLocal=vec4(transformed,1.0);\n#ifdef USE_INSTANCING\ngrdLocal=instanceMatrix*grdLocal;\n#endif\nvGrdWorld=(modelMatrix*grdLocal).xyz;\nvGrdUv=uv;');
+    shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nvGrdDepth=max(0.0,-mvPosition.z);');
+  }
+  // Shared uniform objects: assigning the same references keeps the injection
+  // idempotent (a repeated call cannot grow the uniform block) and lets both
+  // materials read one sea level / amplitude budget.
+  function grdBind(shader,uniforms){
+    shader.uniforms.uGrdSea=uniforms.uGrdSea;
+    shader.uniforms.uGrdAmp=uniforms.uGrdAmp;
+  }
+  function attachGroundDetail(mat,kind,uniforms){
+    if(!mat)return mat;
+    mat.userData=mat.userData||{};
+    mat.userData.groundSurface=kind;
+    // Exposed so a later pass (or the devtools console) can retune the amplitude
+    // without touching this file. Both materials share one uniform pool.
+    mat.userData.groundUniforms=uniforms;
+    mat.onBeforeCompile=function(shader){
+      grdBind(shader,uniforms);
+      grdPatchVertex(shader);
+      if(shader.fragmentShader.indexOf('vGrdWorld')>=0)return;
+      shader.fragmentShader='uniform float uGrdSea;\nuniform float uGrdAmp;\nvarying vec3 vGrdWorld;\nvarying vec3 vGrdNormal;\nvarying vec2 vGrdUv;\nvarying float vGrdDepth;\n'+GRD_NOISE+'\n'+shader.fragmentShader;
+      shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',kind==='road'?GRD_ROAD:GRD_TERRAIN);
+    };
+    mat.customProgramCacheKey=function(){return GRD_CACHE_KEY+'/'+kind;};
+    return mat;
+  }
+
   function build(T, group, options) {
     var opts = options || {}, geo=geography();
     var kit = root.MarioWorldModels.create(T);
@@ -48,6 +182,12 @@
       bronze: material(0xbe964f, { metalness: .3, roughness: .4 }),
       leaves: material(0x4e9b56), flowerCenter: material(0xf4ca5a)
     };
+    // Only the continent and the dirt road receive the micro-surface pass. The
+    // lava fissures reuse roadStrip() with M.lava rather than M.path, so leaving
+    // their material untouched keeps the emissive red glow exactly as authored.
+    var groundUniforms = { uGrdSea: { value: SEA }, uGrdAmp: { value: 1 } };
+    attachGroundDetail(M.earth, 'terrain', groundUniforms);
+    attachGroundDetail(M.path, 'road', groundUniforms);
     var petalMaterials = [material(0xf1c95c), material(0xe487a7), material(0xfbf5dd)];
     var boxGeo = new T.BoxGeometry(1, 1, 1);
     var ballGeo = new T.SphereGeometry(1, 7, 5);
