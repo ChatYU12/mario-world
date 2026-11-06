@@ -38,7 +38,7 @@
 | `barrel` | `barrel.gltf` | 木桶道具 | 240 |
 | **合计** | **12 款** | | **22,383** |
 
-每款输出为一个 indexed `BufferGeometry` / 一个 `Mesh`，最大单款 3,170 triangles。源 glTF 中风车、水车、塔楼等刚性子节点按原始静止姿态应用变换后合并，没有删除它们的组成部分。原包本次选择不含 NPC；人物由项目的新增场景模块自行构建。
+源数据每款输出为一个 indexed `BufferGeometry` / 一个 `Mesh`，源数据最大单款 3,170 triangles。源 glTF 中风车、水车、塔楼等刚性子节点按原始静止姿态应用变换后合并，没有删除它们的组成部分。2026-11-06 的精细化在独立缓存的补充网格中增加门窗木作、屋面接缝等构件，原始 DATA、来源元数据、尺寸和底部基准保持不变；表格面数对应原始数据，补充构件不计入该表。原包本次选择不含 NPC；人物由项目的场景模块自行构建。
 
 ## 转换与二次调色
 
@@ -94,3 +94,15 @@ kit.dispose();                // only after all objects from this kit are no lon
 使用实际 Three.js r147 在 Node 中检查了 12 款模型的索引范围、有限属性、法线长度、UV/颜色属性、三角数、包围盒、y=0 落地、最大宽深=1，以及同 kit 共享和跨 kit 独立缓存。住宅 CPU raycast 能命中实际索引几何。测试在无 DOM、无网络全局下运行；本资产接入任务没有启动或操作用户浏览器。
 
 转换器和 CPU 校验脚本位于工作区 `.asset-work/`，它们是构建材料，不是运行时依赖。实际场景的渲染、布局和交互验收由项目 Lead 与 world-builder 负责。
+
+## Geist 字体与首页设计指南
+
+首页使用 Vercel 官方 Geist 可变字体，原始字体未经修改，中文缺字由系统中文字体回退。首页样式以 data URI 内嵌同一份官方字体，确保双击 HTML 的 file:// 场景不触发字体 CORS；原始 WOFF2 和完整许可也随站点离线提供，不向第三方字体服务发起请求。
+
+- 官方仓库：[vercel/geist-font](https://github.com/vercel/geist-font)
+- 固定来源 commit：`003bc04f134716b5c75613961fa05ad9f4d7023a`
+- 官方原文件：[Geist[wght].woff2](https://raw.githubusercontent.com/vercel/geist-font/003bc04f134716b5c75613961fa05ad9f4d7023a/fonts/Geist/webfonts/Geist%5Bwght%5D.woff2)
+- 本地文件：[Geist-Variable.woff2](assets/Geist-Variable.woff2)，69,760 bytes，SHA-256 `2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1`
+- Copyright 2026 The Geist Project Authors；SIL Open Font License 1.1，完整原文：[Geist-OFL.txt](assets/Geist-OFL.txt)
+
+首页设计遵循用户指定的 [AI Design Skills](https://github.com/elayadesign/ai-design-skills) 中 landing-page-design 指南，并参考其 [redesign-existing-projects companion](https://github.com/elayadesign/redesign-skill/blob/7df13f6a289f4a7f91c5fe3efd70f51fd584ec28/skills/redesign-existing-projects/SKILL.md)。只将指南用于本项目的原创实现，未引入安装 CLI、运行时框架或 CDN。

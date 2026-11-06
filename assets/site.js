@@ -182,7 +182,7 @@
     window.__marioWorldDiagnostics={state:'starting',profile:compatibility?'compatible':'standard',attempt:initializationAttempt};
     canvas.addEventListener('webglcontextcreationerror',function(event){window.__marioWorldDiagnostics.creationMessage=event.statusMessage||'WebGL context creation failed.';});
     try {
-      var missing=['THREE','MarioWorldModels','MarioStoryWorld','MarioConnectedMap','MarioPlanet','MarioImportedModels','MarioWorldEnrichment','MarioDemoBusinesses','MarioTownUI','MarioRenderQuality','MarioVillageLife','MarioFrontierWorld'].filter(function(name){return !window[name];});
+      var missing=['THREE','MarioWorldModels','MarioStoryWorld','MarioConnectedMap','MarioPlanet','MarioImportedModels','MarioWorldEnrichment','MarioDemoBusinesses','MarioTownUI','MarioRenderQuality','MarioVillageLife','MarioFrontierWorld','MarioMapWeather'].filter(function(name){return !window[name];});
       if(missing.length){var resourceError=new Error('缺少本地场景资源：'+missing.join(', '));resourceError.code='WORLD_ASSET_MISSING';throw resourceError;}
       planet = window.MarioPlanet.create(canvas, {
         compatibility:compatibility,quality:restoreSnapshot?'smooth':preferredQuality,environment:preferredEnvironment,onEnvironmentChange:environmentChanged,mapView:preferredMapView,onMapViewChange:mapViewChanged,nodes:nodes, pinHost: byId(isExplore ? 'pins' : 'hero-pins'),

@@ -3,7 +3,10 @@
 (function(root){
   'use strict';
   function optimize(T,group){
-    var replacements=new Map(),originals=new Set();
+    var replacements=new Map(),originals=new Set(),packed=new Set();
+    // 16-bit normalized color retains sub-visible precision and halves the
+    // vertex color bandwidth. Positions, normals, UVs and indices stay intact.
+    group.traverse(function(o){var g=o.geometry,c=g&&g.attributes.color;if(!c||packed.has(g)||Object.prototype.toString.call(c.array)!=='[object Float32Array]'||c.normalized)return;packed.add(g);var data=new Uint16Array(c.count*3),valid=true;for(var i=0;i<c.count*3;i++){var v=c.array[i];if(v<0||v>1.00001){valid=false;break;}data[i]=Math.round(Math.min(1,v)*65535);}if(valid)g.setAttribute('color',new T.Uint16BufferAttribute(data,3,true));});
     group.traverse(function(o){if(!o.isMesh||!o.material)return;
       function convert(m){if(!m.isMeshStandardMaterial)return m;if(replacements.has(m))return replacements.get(m);
         var lite=new T.MeshLambertMaterial({color:m.color,emissive:m.emissive,emissiveIntensity:m.emissiveIntensity,vertexColors:m.vertexColors,map:m.map,transparent:m.transparent,opacity:m.opacity,side:m.side,depthWrite:m.depthWrite,alphaTest:m.alphaTest,flatShading:m.flatShading});

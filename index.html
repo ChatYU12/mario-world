@@ -4,40 +4,49 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>马里奥世界 · 让工作，彼此连接</title>
-<meta name="description" content="在一个可以探索的世界里，了解智能协作、业务自动化与数据连接。面向客户与合作伙伴的能力方向展示。">
-<meta name="theme-color" content="#ffffff">
+<meta name="description" content="为客户与合作伙伴呈现智能协作、业务自动化与数据连接。在可探索的星球里，从一项任务出发，发现更连贯的工作方式。">
+<meta name="theme-color" content="#f1f7fa">
 <meta name="color-scheme" content="light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="马里奥世界 · 让工作，彼此连接">
+<meta property="og:description" content="从城堡、工坊与港口出发，探索智能协作、业务自动化与数据连接。无需注册，可离线体验。">
+<meta property="og:image" content="scene-preview.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23dc6982'/%3E%3Cpath d='M8 31V17h6v-6h5v6h3v-6h5v6h5v14H8z' fill='%23fffdf8'/%3E%3Cpath d='M17 31v-7a3 3 0 016 0v7' fill='%23eab84b'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css?v=20261105-frontier1">
 <link rel="stylesheet" href="assets/apple.css?v=20261104-environment1">
 <link rel="stylesheet" href="assets/town-compat.css?v=20261104-environment1">
 <link rel="stylesheet" href="assets/environment.css?v=20261104-environment1">
-<script>document.documentElement.classList.add('js-reveal');</script>
+<link rel="stylesheet" href="assets/home-design.css?v=20261106-detail1">
 </head>
-<body>
-<a class="skip-link" href="#main">跳到主要内容</a>
+<body class="home-design">
+<a class="skip-link button-sm" href="#main">跳到主要内容</a>
 <svg width="0" height="0" aria-hidden="true" style="position:absolute;overflow:hidden"><defs>
 <symbol id="castle-icon" viewBox="0 0 40 44"><path d="M5 40V19h7v-7h5v7h6v-7h5v7h7v21H5Z" fill="currentColor"/><path d="m3 19 5-10 6 10M14 12l6-11 6 11M26 19l6-10 6 10" fill="currentColor"/><path d="M16 40V29a4 4 0 0 1 8 0v11" fill="#fffdf8"/><path d="M9 23h3v5H9m19-5h3v5h-3M18 16h4v6h-4" fill="#fffdf8"/></symbol>
 <symbol id="automation-icon" viewBox="0 0 32 32"><path d="M4 26V14l9 5v-5l10 5V7h5v19H4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 23h3m5 0h3m5 0h2M5 8h10m-3-3 3 3-3 3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
 <symbol id="connection-icon" viewBox="0 0 32 32"><path d="M6 7h20v7H6V7Zm4 7v12h12V14M3 26h26" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10h8m-6 8v5" stroke="currentColor" stroke-width="2"/></symbol>
 <symbol id="explore-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z" fill="currentColor"/></symbol>
 </defs></svg>
+<!-- Existing-site design: classic hero and sections, led by the real interactive
+     world rather than stock imagery. No client logos, performance claims or
+     promises have been invented. The world exhibit below stays byte-for-byte. -->
 <header class="site-header" id="site-header">
-<div class="wrap header-inner">
-<a class="brand" href="index.html" aria-label="马里奥世界首页"><svg class="brand-icon" aria-hidden="true"><use href="#castle-icon"/></svg><span><span class="brand-name">MARIO WORLD</span><span class="brand-caption">马里奥世界</span></span></a>
-<nav class="site-nav" aria-label="主导航"><a href="#capabilities" class="nav-optional">能力方向</a><a href="planet.html">探索星球</a><a class="nav-contact" href="#contact">交流需求</a></nav>
+<div class="header-inner">
+<a class="brand" href="index.html" aria-label="马里奥世界首页" aria-current="page"><svg class="brand-icon" aria-hidden="true"><use href="#castle-icon"/></svg><span><span class="brand-name title-4">Mario World</span><span class="brand-caption caption-5">马里奥世界</span></span></a>
+<button class="home-menu-toggle button-sm" id="home-menu-toggle" type="button" aria-expanded="false" aria-controls="home-navigation" aria-label="打开导航"><span aria-hidden="true"></span><span aria-hidden="true"></span></button>
+<nav class="site-nav title-4" id="home-navigation" aria-label="主导航"><a href="#capabilities">能力方向</a><a href="#applications">应用示意</a><a href="#contact">交流需求</a><a class="nav-contact button-sm" href="planet.html">进入星球探索</a></nav>
 </div>
 </header>
 <main id="main">
 <div class="hero-section">
 <section class="hero wrap" aria-labelledby="hero-title">
 <div class="hero-copy">
-<p class="hero-intro">面向客户与合作伙伴的能力探索</p>
-<h1 id="hero-title"><span>让工作，</span><span>彼此连接。</span></h1>
-<p class="hero-lede">人与智能体协作，业务步骤接续，数据在需要它的地方流动。我们正在围绕这三个方向，探索更连贯的工作方式。</p>
-<div class="hero-actions"><a class="button" href="planet.html"><svg aria-hidden="true"><use href="#explore-icon"/></svg>进入星球探索</a><a class="button secondary" href="#contact">交流需求</a></div>
-<p class="edition-note">能力方向展示 · 应用场景为示意</p>
-<div class="hero-quick-links" aria-label="直接查看能力介绍"><button type="button" data-capability="collaboration">智能协作</button><button type="button" data-capability="automation">业务自动化</button><button type="button" data-capability="connection">数据连接</button></div>
+<p class="hero-intro caption-2">给客户与合作伙伴的一座工作星球</p>
+<h1 class="heading-1" id="hero-title"><span>让工作，</span><span>彼此连接。</span></h1>
+<p class="hero-lede body-3">在城堡里一起完成任务，在工坊里接续业务，在港口让数据汇合。把抽象的能力，变成可以亲手探索的世界。</p>
+<div class="hero-actions"><a class="button button-md" href="planet.html">进入星球探索</a></div>
+<p class="edition-note caption-2">无需注册，可离线探索。场景用于能力演示。</p>
+<div class="hero-quick-links" aria-label="直接查看能力介绍"><button class="button-sm" type="button" data-capability="collaboration">智能协作</button><button class="button-sm" type="button" data-capability="automation">业务自动化</button><button class="button-sm" type="button" data-capability="connection">数据连接</button></div>
 </div>
 <div class="exhibit hero-exhibit" id="hero-exhibit">
 <canvas class="world-canvas" id="hero-globe" aria-label="星球总览：拖动旋转，点击地域埋点进入连续地图"></canvas>
@@ -56,51 +65,63 @@
 </section>
 </div>
 <section class="section wrap" id="capabilities" aria-labelledby="capabilities-title">
-<div class="section-heading" data-reveal><h2 id="capabilities-title">从三个方向，<br>重新连接工作。</h2><p>世界里的建筑，也是了解平台的入口。你可以自由探索，也可以在这里直接阅读。</p></div>
+<div class="section-heading" data-reveal><h2 class="heading-2" id="capabilities-title">每一处风景，<br>都是工作的另一种可能。</h2><p class="body-3">从你熟悉的问题出发。让任务有伙伴，让步骤有衔接，让信息有去向。</p></div>
 <div class="direction-grid">
-<article class="direction" data-reveal style="--tint:#b4647a"><div class="direction-mark"><svg aria-hidden="true" viewBox="0 0 40 44"><use href="#castle-icon"/></svg>城堡与村落</div><h3>智能协作</h3><p>让人与智能体围绕共同的任务分工，把信息、判断与行动连接起来。让每一步的交接，都有清楚的去向。</p><p class="scene-note">一起完成一项任务</p><button type="button" data-capability="collaboration" data-scroll-world>了解智能协作</button></article>
-<article class="direction" data-reveal style="--tint:#9c742f"><div class="direction-mark"><svg aria-hidden="true"><use href="#automation-icon"/></svg>工坊与道路</div><h3>业务自动化</h3><p>把重复发生的业务步骤连成流程，为异常和人工确认留出位置，让工作在合适的时间继续向前。</p><p class="scene-note">让业务步骤接续发生</p><button type="button" data-capability="automation" data-scroll-world>了解业务自动化</button></article>
-<article class="direction" data-reveal style="--tint:#2f6f8c"><div class="direction-mark"><svg aria-hidden="true"><use href="#connection-icon"/></svg>港口与水路</div><h3>数据连接</h3><p>梳理不同工具与系统之间的信息关系，让数据沿着业务需要流动，成为团队协作的共同起点。</p><p class="scene-note">让信息抵达需要它的地方</p><button type="button" data-capability="connection" data-scroll-world>了解数据连接</button></article>
+<article class="direction direction-collaboration" data-reveal><div class="direction-mark caption-2"><svg aria-hidden="true" viewBox="0 0 40 44"><use href="#castle-icon"/></svg>城堡与村落</div><h3 class="heading-3">让一项任务，<br>有共同前进的伙伴。</h3><p class="body-3">人提供经验和判断，智能体协助整理资料与形成初稿。围绕同一个目标，把分工、确认与交接接在一起。</p><p class="scene-note caption-2">智能协作</p><button class="button-sm" type="button" data-capability="collaboration" data-scroll-world>探索城堡里的协作</button></article>
+<article class="direction direction-automation" data-reveal><div class="direction-mark caption-2"><svg aria-hidden="true"><use href="#automation-icon"/></svg>工坊与道路</div><h3 class="heading-5">让重复的步骤，接续发生。</h3><p class="body-3">把业务步骤连成流程，也为异常和人工确认留出位置。知道工作走到哪里，下一步该由谁接手。</p><p class="scene-note caption-2">业务自动化</p><button class="button-sm" type="button" data-capability="automation" data-scroll-world>探索工坊里的流程</button></article>
+<article class="direction direction-connection" data-reveal><div class="direction-mark caption-2"><svg aria-hidden="true"><use href="#connection-icon"/></svg>港口与水路</div><h3 class="heading-5">让分散的信息，抵达同一处。</h3><p class="body-3">梳理不同工具与系统之间的信息关系，让数据沿着业务需要流动，成为团队共同的起点。</p><p class="scene-note caption-2">数据连接</p><button class="button-sm" type="button" data-capability="connection" data-scroll-world>探索港口里的连接</button></article>
 </div>
+</section>
+<section class="home-tagline wrap" aria-labelledby="home-tagline-title">
+<h2 class="heading-2" id="home-tagline-title"><span class="tagline-line"><span data-tagline-word>把时间</span><span data-tagline-word>留给判断，</span></span><span class="tagline-line"><span data-tagline-word>把连接</span><span data-tagline-word>交给系统。</span></span></h2>
+<p class="body-3">从一个具体问题开始，走向更连贯的工作。</p>
+<ol class="home-journey"><li><span class="caption-3">第一步</span><h3 class="title-2">找到你的场景</h3><p class="body-6">在星球中选择城堡、工坊或港口。</p></li><li><span class="caption-3">第二步</span><h3 class="title-2">看懂连接过程</h3><p class="body-6">从业务问题读到解决思路与预期价值。</p></li><li><span class="caption-3">第三步</span><h3 class="title-2">带着问题交流</h3><p class="body-6">梳理真实需求，再讨论可实现的范围。</p></li></ol>
 </section>
 <section class="section application-section" id="applications" aria-labelledby="applications-title">
 <div class="wrap application-layout">
-<div class="application-intro" data-reveal><span class="small-badge">应用示意</span><h2 id="applications-title">从熟悉的工作，<br>看见新的可能。</h2><p>用一个具体问题，说明能力可以如何组织。这里的示意用于交流思路，不代表已经上线的产品或确定的交付承诺。</p><div class="application-tabs" role="tablist" aria-label="选择应用示意"><button id="tab-collaboration" type="button" role="tab" aria-selected="true" aria-controls="application-panel" data-example="collaboration">智能协作</button><button id="tab-automation" type="button" role="tab" aria-selected="false" aria-controls="application-panel" tabindex="-1" data-example="automation">业务自动化</button><button id="tab-connection" type="button" role="tab" aria-selected="false" aria-controls="application-panel" tabindex="-1" data-example="connection">数据连接</button></div></div>
-<div class="application-content" id="application-panel" role="tabpanel" aria-labelledby="tab-collaboration" tabindex="0" data-reveal><h3 id="application-title">一起完成一份客户提案</h3><dl><div class="story-row"><dt>业务问题</dt><dd id="application-problem">资料散在不同工具里，任务交接依赖反复沟通。每个人都很忙，团队却难以看清共同进度。</dd></div><div class="story-row"><dt>解决过程</dt><dd id="application-process">以一次客户提案为例：智能体协助整理资料、形成初稿；团队成员补充判断、确认内容，再把后续工作交给合适的人。</dd></div><div class="story-row"><dt>预期价值</dt><dd id="application-value">探索更清晰的任务分工与交接，让团队把注意力放在需要经验和判断的地方。</dd></div></dl><a class="text-link" id="application-contact" href="#contact">聊聊你遇到的类似问题</a></div>
+<div class="application-intro" data-reveal><span class="small-badge caption-3">应用示意</span><h2 class="heading-2" id="applications-title">从熟悉的工作，<br>看见新的可能。</h2><p class="body-3">一份客户提案，一次业务审批，一组分散的数据。切换场景，看看能力如何围绕问题组织起来。</p><div class="application-tabs" role="tablist" aria-label="选择应用示意"><button class="button-sm" id="tab-collaboration" type="button" role="tab" aria-selected="true" aria-controls="application-panel" data-example="collaboration">智能协作</button><button class="button-sm" id="tab-automation" type="button" role="tab" aria-selected="false" aria-controls="application-panel" tabindex="-1" data-example="automation">业务自动化</button><button class="button-sm" id="tab-connection" type="button" role="tab" aria-selected="false" aria-controls="application-panel" tabindex="-1" data-example="connection">数据连接</button></div><p class="application-disclaimer caption-2">用于交流思路，具体功能与交付范围需进一步沟通。</p></div>
+<div class="application-content" id="application-panel" role="tabpanel" aria-labelledby="tab-collaboration" tabindex="0" data-reveal><p class="application-sheet-label caption-2">场景工作台</p><h3 class="heading-5" id="application-title">一起完成一份客户提案</h3><dl><div class="story-row"><dt class="caption-3">业务问题</dt><dd class="body-3" id="application-problem">资料散在不同工具里，任务交接依赖反复沟通。每个人都很忙，团队却难以看清共同进度。</dd></div><div class="story-row"><dt class="caption-3">解决过程</dt><dd class="body-3" id="application-process">以一次客户提案为例：智能体协助整理资料、形成初稿；团队成员补充判断、确认内容，再把后续工作交给合适的人。</dd></div><div class="story-row"><dt class="caption-3">预期价值</dt><dd class="body-3" id="application-value">探索更清晰的任务分工与交接，让团队把注意力放在需要经验和判断的地方。</dd></div></dl><a class="text-link title-4" id="application-contact" href="#contact">梳理你遇到的类似问题</a></div>
 </div>
+</section>
+<section class="section wrap home-faq" id="questions" aria-labelledby="questions-title">
+<div class="section-heading" data-reveal><h2 class="heading-3" id="questions-title">出发之前，<br>你可能想知道。</h2><p class="body-3">这里是一座能力演示星球。体验的方式、数据的边界，都先说清楚。</p></div>
+<dl class="home-faq-grid"><div><dt class="title-2">这是什么样的网站？</dt><dd class="body-3">这是面向客户与合作伙伴的能力方向展示，用可探索的世界介绍智能协作、业务自动化与数据连接。</dd></div><div><dt class="title-2">需要注册或联网吗？</dt><dd class="body-3">不需要注册。字体、脚本与场景资源随站点提供，本地完整文件可以离线运行。</dd></div><div><dt class="title-2">从哪里开始探索？</dt><dd class="body-3">点击“进入星球探索”，拖动星球并选择地域。也可以点击首页的能力文字入口。</dd></div><div><dt class="title-2">看不到 3D 星球怎么办？</dt><dd class="body-3">场景会提供错误说明与可用的重试入口。你也可以阅读能力方向和应用示意，了解同样的内容。</dd></div><div><dt class="title-2">场景代表已经交付的功能吗？</dt><dd class="body-3">场景用于说明能力和解决思路，不是已上线功能清单。具体方案、交付范围与成效需要结合实际需求确认。</dd></div><div><dt class="title-2">填写需求后会发生什么？</dt><dd class="body-3">表单仅演示填写与校验，不会发送或保存内容。请勿填写敏感信息；预览结果会在页面内显示。</dd></div></dl>
 </section>
 <section class="section wrap" id="contact" aria-labelledby="contact-title">
 <div class="contact-layout">
-<div class="contact-intro" data-reveal><h2 id="contact-title">你的工作里，<br>哪一步最想改变？</h2><p>无论是一段反复执行的流程，一次总在等待的交接，还是几套难以互通的系统，都可以成为我们交流的起点。</p><div class="demo-notice" id="demo-notice"><strong>当前为演示表单</strong>你可以体验填写与校验。内容不会发送、保存或提交到任何服务。</div></div>
+<div class="contact-intro" data-reveal><h2 class="heading-2" id="contact-title">你的工作里，<br>哪一步最想改变？</h2><p class="body-3">一段反复执行的流程，一次总在等待的交接，或几套难以互通的系统。先把问题说清楚，才知道应该连接什么。</p><div class="demo-notice body-6" id="demo-notice"><strong class="body-4">当前为演示表单</strong>你可以体验填写与校验。内容不会发送、保存或提交到任何服务。</div></div>
 <form class="demo-form" id="demo-form" aria-describedby="demo-notice" autocomplete="off" data-reveal>
-<div class="form-grid"><div class="field"><label for="contact-name">怎么称呼你</label><input id="contact-name" name="name" type="text" maxlength="60" required placeholder="你的称呼" autocomplete="off"></div><div class="field"><label for="contact-method">联系方式</label><input id="contact-method" name="contact" type="text" maxlength="120" required placeholder="邮箱、电话或其他联系渠道" autocomplete="off"></div><div class="field full"><label for="contact-company">公司或团队<span class="optional">选填</span></label><input id="contact-company" name="company" type="text" maxlength="120" placeholder="公司或团队名称" autocomplete="off"></div></div>
-<fieldset class="interest-group"><legend>感兴趣的能力方向<span class="optional">可多选</span></legend><div class="interest-options"><label class="interest-option"><input type="checkbox" name="interest" value="collaboration">智能协作</label><label class="interest-option"><input type="checkbox" name="interest" value="automation">业务自动化</label><label class="interest-option"><input type="checkbox" name="interest" value="connection">数据连接</label></div></fieldset>
-<div class="field"><label for="contact-description">描述一下你的需求</label><textarea id="contact-description" name="description" maxlength="2000" required placeholder="你正在处理什么工作？哪个环节最重复、最容易卡住，或者最希望被连接起来？"></textarea></div>
-<div class="form-foot"><p>填写与校验演示，不会发送或保存内容。</p><button class="button" id="demo-submit" type="submit" disabled>预览需求</button></div>
-<p class="form-status" id="form-status" role="status" aria-live="polite" hidden></p>
+<div class="form-grid"><div class="field"><label class="title-4" for="contact-name">怎么称呼你</label><input class="body-3" id="contact-name" name="name" type="text" maxlength="60" required placeholder="你的称呼" autocomplete="off"></div><div class="field"><label class="title-4" for="contact-method">联系方式</label><input class="body-3" id="contact-method" name="contact" type="text" maxlength="120" required placeholder="邮箱、电话或其他联系渠道" autocomplete="off" aria-describedby="contact-method-error"><span class="home-field-error caption-2" id="contact-method-error" hidden>邮箱格式不完整，请填写如 name@example.com 的地址。</span></div><div class="field full"><label class="title-4" for="contact-company">公司或团队<span class="optional caption-5">选填</span></label><input class="body-3" id="contact-company" name="company" type="text" maxlength="120" placeholder="公司或团队名称" autocomplete="off"></div></div>
+<fieldset class="interest-group"><legend class="title-4">感兴趣的能力方向<span class="optional caption-5">可多选</span></legend><div class="interest-options"><label class="interest-option body-6"><input type="checkbox" name="interest" value="collaboration">智能协作</label><label class="interest-option body-6"><input type="checkbox" name="interest" value="automation">业务自动化</label><label class="interest-option body-6"><input type="checkbox" name="interest" value="connection">数据连接</label></div></fieldset>
+<div class="field"><label class="title-4" for="contact-description">描述一下你的需求</label><textarea class="body-3" id="contact-description" name="description" maxlength="2000" required placeholder="你正在处理什么工作？哪个环节最重复、最容易卡住，或者最希望被连接起来？"></textarea></div>
+<div class="form-foot"><p class="caption-2">只在此页预览，不会发送或保存。</p><button class="button button-md" id="demo-submit" type="submit" disabled>预览需求</button></div>
+<p class="form-status body-6" id="form-status" role="status" aria-live="polite" hidden></p>
 </form>
 </div>
 </section>
+<section class="home-final wrap" aria-labelledby="home-final-title"><div><h2 class="heading-3" id="home-final-title">下一站，去星球里看看。</h2><p class="body-3">从一处风景开始，找到与你的工作有关的连接。</p></div><a class="button button-md" href="planet.html">进入星球探索</a></section>
 </main>
-<footer class="site-footer wrap"><div><span class="footer-title">马里奥世界</span> · 智能协作、业务自动化与数据连接</div><div class="footer-links"><a href="planet.html">探索星球</a><a href="#contact">交流需求</a></div></footer>
+<footer class="site-footer wrap"><div><span class="footer-title title-3">Mario World · 马里奥世界</span><p class="caption-2">一座关于工作如何连接的探索世界。</p></div><div class="footer-links title-4"><a href="#main">返回顶部</a><a href="#privacy">隐私说明</a><a href="#terms">使用说明</a></div><div class="home-legal"><details id="privacy"><summary class="caption-2">隐私说明</summary><p class="body-6">本演示不接收或保存表单内容，不使用分析追踪或第三方字体服务。关闭或刷新页面后，演示输入不会由本站保存。请勿输入敏感信息。</p></details><details id="terms"><summary class="caption-2">使用说明</summary><p class="body-6">站点内容用于展示与交流能力方向，不构成产品交付、服务可用性或成效承诺。具体合作内容需另行沟通确认。</p></details></div></footer>
 <p class="sr-only" id="live" role="status" aria-live="polite"></p>
 <script src="assets/nodes.js?v=20261104-environment1"></script>
 <script src="assets/three.min.js?v=20261104-environment1"></script>
-<script src="assets/imported-models.js?v=20261104-environment1"></script>
-<script src="assets/world-models.js?v=20261104-environment1"></script>
+<script src="assets/imported-models.js?v=20261106-detail1"></script>
+<script src="assets/world-models.js?v=20261106-detail1"></script>
 <script src="assets/world-geography.js?v=20261105-frontier1"></script>
 <script src="assets/story-world.js?v=20261105-frontier1"></script>
 <script src="assets/connected-map.js?v=20261105-frontier1"></script>
 <script src="assets/demo-businesses.js?v=20261104-environment1"></script>
-<script src="assets/world-enrichment.js?v=20261104-environment1"></script>
-<script src="assets/village-life.js?v=20261105-village1"></script>
-<script src="assets/frontier-scenes.js?v=20261105-frontier1"></script>
-<script src="assets/render-quality.js?v=20261105-frontier1"></script>
-<script src="assets/world-environment.js?v=20261106-atmosphere1"></script>
-<script src="assets/planet3d.js?v=20261106-atmosphere1"></script>
+<script src="assets/world-enrichment.js?v=20261106-detail1"></script>
+<script src="assets/village-life.js?v=20261106-detail1"></script>
+<script src="assets/frontier-scenes.js?v=20261106-detail1"></script>
+<script src="assets/render-quality.js?v=20261106-detail1"></script>
+<script src="assets/map-weather.js?v=20261106-detail1"></script>
+<script src="assets/world-environment.js?v=20261106-detail1"></script>
+<script src="assets/planet3d.js?v=20261106-detail1"></script>
 <script src="assets/town-ui.js?v=20261104-environment1"></script>
 <script src="assets/environment-ui.js?v=20261104-environment1"></script>
-<script src="assets/site.js?v=20261105-frontier1"></script>
+<script src="assets/site.js?v=20261106-detail1"></script>
 <script src="assets/apple-motion.js?v=20261104-environment1"></script>
+<script src="assets/home-design.js?v=20261106-detail1"></script>
 </body>
 </html>

@@ -28,12 +28,12 @@
     function cyl(g,c,x,y,z,rt,rb,h,n,rx,ry,rz){return part(g,geometry(['c',rt,rb,h,n||8].join('/'),function(){return new T.CylinderGeometry(rt,rb,h,n||8);}),c,x,y,z,1,1,1,rx,ry,rz);}
     function roof(g,c,y,w,d){box(g,c,-w*.24,y,0,w*.59,.16,d,0,0,.53);box(g,c,w*.24,y,0,w*.59,.16,d,0,0,-.53);}
     function compile(source,name,placeId){
-      source.updateMatrixWorld(true);var p=[],n=[],c=[],idx=[],v=new T.Vector3(),normal=new T.Vector3(),nm=new T.Matrix3();
+      source.updateMatrixWorld(true);var p=[],n=[],c=[],uv=[],idx=[],v=new T.Vector3(),normal=new T.Vector3(),nm=new T.Matrix3();
       source.traverse(function(o){if(!o.isMesh)return;var a=o.geometry.attributes.position,na=o.geometry.attributes.normal,ca=o.geometry.attributes.color,co=o.material.color,offset=p.length/3;nm.getNormalMatrix(o.matrixWorld);
-        for(var i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(o.matrixWorld);normal.fromBufferAttribute(na,i).applyMatrix3(nm).normalize();p.push(v.x,v.y,v.z);n.push(normal.x,normal.y,normal.z);c.push(co.r*(ca?ca.getX(i):1),co.g*(ca?ca.getY(i):1),co.b*(ca?ca.getZ(i):1));}
+        for(var i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(o.matrixWorld);normal.fromBufferAttribute(na,i).applyMatrix3(nm).normalize();p.push(v.x,v.y,v.z);n.push(normal.x,normal.y,normal.z);c.push(co.r*(ca?ca.getX(i):1),co.g*(ca?ca.getY(i):1),co.b*(ca?ca.getZ(i):1));var ua=o.geometry.attributes.uv;uv.push(ua?ua.getX(i):0,ua?ua.getY(i):0);}
         var index=o.geometry.index;if(index){for(var j=0;j<index.count;j++)idx.push(offset+index.getX(j));}else for(var j=0;j<a.count;j++)idx.push(offset+j);
       });
-      var g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('normal',new T.Float32BufferAttribute(n,3));g.setAttribute('color',new T.Float32BufferAttribute(c,3));g.setAttribute('uv',new T.Float32BufferAttribute(new Float32Array(p.length/3*2),2));g.setIndex(idx);g.computeBoundingBox();g.computeBoundingSphere();var mesh=new T.Mesh(g,material);mesh.name=name;if(placeId)mesh.userData.placeId=placeId;mesh.userData.demoOnly=true;return mesh;
+      var g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('normal',new T.Float32BufferAttribute(n,3));g.setAttribute('color',new T.Uint16BufferAttribute(c.map(function(v){return Math.round(Math.max(0,Math.min(1,v))*65535);}),3,true));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeBoundingBox();g.computeBoundingSphere();var mesh=new T.Mesh(g,material);mesh.name=name;if(placeId)mesh.userData.placeId=placeId;mesh.userData.demoOnly=true;return mesh;
     }
     var roads=(geo.routeDefinitions||[]).map(function(r){var curve=new T.CatmullRomCurve3(r.controls.map(function(p){return new T.Vector3(p[0],0,p[1]);}));return curve.getPoints(Math.max(100,Math.ceil(curve.getLength()*5)));});
     roads.push([new T.Vector3(0,0,-10.5),new T.Vector3(0,0,-2.5)]);
@@ -80,6 +80,39 @@
         else if(snow){box(g,C.wood,0,1.58,.96,2.38,.12,.22);[-1,1].forEach(function(s){box(g,C.wood,s*.97,.86,1.02,.1,1.43,.1);});}
         else flowerbox(g,-.73,1.06);
       }
+      // Construction follows each silhouette, within the original site footprint.
+      if(type==='water-tower'){
+        [-1,1].forEach(function(s){box(g,C.dark,s*.69,1.18,0,.07,.08,1.5,.66);box(g,C.cream,s*.69,2.3,.51,.07,.67,.05);});
+        cyl(g,C.dark,.91,1.19,0,.055,.055,2.22,6);box(g,C.gold,.91,.17,.12,.12,.10,.26);
+      }else if(type==='lighthouse'){
+        cyl(g,C.white,0,3.08,0,.76,.76,.045,10);
+        for(var k=0;k<8;k++){var a=k*Math.PI/4;box(g,C.dark,Math.sin(a)*.70,3.22,Math.cos(a)*.70,.035,.3,.035);}
+        box(g,C.gold,0,2.05,.55,.19,.28,.06);box(g,C.stone,0,.08,.79,.60,.12,.35);
+      }else{
+        [-1,1].forEach(function(side){
+          box(g,C.wood,side*1.055,.95,.79,.08,1.48,.08);
+          box(g,C.wood,side*.72,.73,.92,.62,.07,.15);
+          box(g,C.wood,side*.99,1.06,.91,.08,.55,.055);
+          box(g,C.white,side*1.09,1.14,-.20,.055,.62,.54);
+          box(g,C.blue,side*1.124,1.14,-.20,.025,.48,.40);
+          box(g,C.wood,side*1.143,1.14,-.20,.025,.48,.032);
+          box(g,C.wood,side*1.143,1.14,-.20,.025,.032,.42);
+        });
+        box(g,C.stone,0,.07,1.0,.70,.12,.40);
+        box(g,C.wood,0,1.20,.91,.59,.065,.12);
+        [0,.24].forEach(function(y){box(g,C.dark,-.13,.43+y,.905,.12,.022,.018);});
+        if(!desert){
+          box(g,C.wood,0,2.45,0,.11,.10,2.05);
+          [-1,1].forEach(function(side){box(g,C.wood,side*1.27,1.77,0,.10,.10,2.07);box(g,C.cream,side*.55,2.10,1.035,1.25,.055,.065,0,0,-side*.53);});
+          for(var k=0;k<3;k++){var z=-.65+k*.65;[-1,1].forEach(function(side){box(g,roofColor,side*.65,2.15,z,1.40,.045,.045,0,0,-side*.53);});}
+        }else{
+          box(g,C.wood,0,1.55,.9,.68,.12,.23);box(g,C.cream,0,2.06,-.88,2.2,.24,.14);
+          [-.58,.58].forEach(function(x){box(g,C.red,x,1.86,.97,.14,.18,.045);});
+        }
+        if(type==='mill'){for(var k=0;k<4;k++){var a=k*Math.PI/2+.35;for(var r=0;r<3;r++)box(g,C.wood,Math.sin(a)*(.73+r*.27)+Math.cos(a)*.15,2.44+Math.cos(a)*(.73+r*.27)-Math.sin(a)*.15,1.19,.39,.025,.025,0,0,-a);}}
+        if(industrial){box(g,C.stone,.67,2.53,-.37,.34,.11,.35);for(var k=0;k<3;k++)box(g,C.gold,-.6+k*.13,1.13,.998,.055,.055,.025);}
+        if(snow){[-.72,0,.72].forEach(function(x){box(g,C.dark,x,.88,-.83,.10,1.4,.06);});}
+      }
       if(index%4===0)cart(g);else if(index%4===1)lamp(g);else if(index%4===2)well(g);else farm(g);
       return g;
     }
@@ -95,6 +128,24 @@
       else if(type===3){cyl(g,C.gold,0,1.22,0,.2,.2,.13,8);box(g,C.wood,.32,.63,.04,.05,.47,.05);box(g,C.stone,.32,.89,.04,.24,.12,.12);box(g,C.wood,0,.57,.15,.28,.25,.03);}
       else if(type===4){cyl(g,C.blue,0,1.23,0,.18,.19,.16,8);ball(g,C.white,0,1.36,0,.07,.07,.07);box(g,C.gold,0,.85,.02,.42,.09,.31);box(g,C.gold,.17,.68,.14,.09,.32,.04);box(g,C.wood,.34,.5,.04,.045,.98,.045);}
       else {cyl(g,C.green,0,1.21,0,.24,.25,.045,9);cyl(g,C.green,0,1.27,0,.15,.18,.12,8);box(g,C.red,0,.68,-.18,.38,.45,.22);box(g,C.cream,0,.68,-.304,.27,.25,.035);[-1,1].forEach(function(s){box(g,C.gold,s*.12,.65,.14,.035,.35,.025);});box(g,C.wood,.33,.5,0,.04,1,.04);}
+      // Six occupational outfits share the same hand/face/boot construction.
+      [-1,1].forEach(function(s){
+        part(g,geometry('ear',function(){return new T.IcosahedronGeometry(1,0);}),skin,s*.19,1.005,0,.035,.052,.035);
+        box(g,C.wood,s*.145,1.095,.08,.055,.11,.06,0,0,s*.2);
+        box(g,C.wood,s*.064,1.093,.171,.055,.014,.018,0,0,s*(type===3?.17:-.10));
+        box(g,C.white,s*.062,1.044,.184,.012,.014,.008);
+        box(g,C.cream,s*.075,.81,.137,.10,.09,.025,0,0,s*.35);
+        box(g,C.dark,s*.092,.025,.06,.16,.025,.27);
+        box(g,skin,s*.287,.47,.043,.035,.05,.04);
+      });
+      box(g,C.gold,0,.46,.14,.065,.045,.02);
+      box(g,type===0?C.dark:C.gold,0,.71,.15,.025,.025,.02);
+      if(type===0){box(g,C.wood,0,.57,.16,.15,.025,.02);box(g,C.white,-.1,.63,.16,.045,.08,.025);}
+      else if(type===1){box(g,C.wood,0,.61,.15,.20,.16,.035);box(g,C.gold,0,.69,.17,.05,.025,.02);}
+      else if(type===2){box(g,C.red,0,.79,.18,.09,.11,.025);box(g,C.white,.29,.53,.08,.08,.025,.08);}
+      else if(type===3){[-.07,.07].forEach(function(x){box(g,C.dark,x,1.04,.184,.09,.07,.025);box(g,C.blue,x,1.04,.20,.063,.042,.01);});box(g,C.dark,0,1.04,.19,.04,.015,.02);}
+      else if(type===4){box(g,C.cream,0,.95,.171,.10,.025,.018);box(g,C.gold,0,.80,-.21,.28,.09,.02);}
+      else{box(g,C.wood,0,.51,-.30,.3,.065,.06);box(g,C.gold,0,.69,-.33,.06,.055,.02);}
       return g;
     }
     // Four residents per business, six distinct reusable prototypes, never original NPC IDs.

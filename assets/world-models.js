@@ -706,9 +706,141 @@
 
     // Authored dimensions remain explicit while all resources stay shared. Root
     // transforms are clean for the spherical scene's placement and batching.
+    // Low-sided joinery gives each category a construction language. These
+    // parts sit inside the original silhouette; normalization remains unchanged.
+    function refine(model) {
+      var d = group('construction-detail'), features = [];
+      var dark = model.name === 'lava-castle';
+      function feature(name) { features.push(name); }
+      function plank(x, y, z, w, h, depth, mat) {
+        return box(d, mat || M.woodLight, x, y, z, w, h, depth);
+      }
+      switch (model.name) {
+        case 'storybook-castle': case 'lava-castle':
+          feature('staggered-masonry-joints'); feature('portal-keystone');
+          [-1, 1].forEach(function (side) {
+            for (var row = 0; row < 4; row++) {
+              for (var joint = 0; joint < 3; joint++) {
+                plank(side * (0.058 + joint * 0.028 + (row % 2) * 0.006),
+                  0.062 + row * 0.020, 0.118, 0.0011, 0.014, 0.0015, dark ? M.charcoal : M.limestone);
+              }
+            }
+          });
+          plank(0, 0.146, 0.126, 0.012, 0.016, 0.004, dark ? M.gold : M.pale);
+          break;
+        case 'mushroom-house':
+          feature('porch-posts-and-braces'); feature('radial-cap-gills');
+          [-1, 1].forEach(function (s) {
+            plank(s * 0.018, 0.031, 0.056, 0.0025, 0.043, 0.0025);
+            rod(d, M.wood, [s * 0.018, 0.039, 0.056], [s * 0.009, 0.052, 0.056], 0.0012, 4);
+          });
+          plank(0, 0.053, 0.056, 0.040, 0.003, 0.009);
+          for (var i = 0; i < 8; i++) {
+            var a = i * Math.PI / 4;
+            rod(d, M.trim, [Math.cos(a) * 0.046, 0.078, Math.sin(a) * 0.046],
+              [Math.cos(a) * 0.061, 0.078, Math.sin(a) * 0.061], 0.0008, 3);
+          }
+          break;
+        case 'hollow-pipe':
+          feature('vertical-casting-seams'); feature('collar-fasteners');
+          [-1, 1].forEach(function (s) {
+            plank(s * 0.023, 0.052, 0.022, 0.0015, 0.078, 0.0015, M.pipeLip);
+            cylinder(d, M.gold, s * 0.033, 0.112, 0, 0.002, 0.002, 0.004, 6);
+          });
+          break;
+        case 'round-tree': case 'snow-tree':
+          feature('root-flare'); feature('bark-ridges');
+          for (var i = 0; i < 3; i++) {
+            var a = i * Math.PI * 2 / 3;
+            rod(d, M.brown, [Math.cos(a) * 0.004, 0.025, Math.sin(a) * 0.004],
+              [Math.cos(a) * 0.020, 0.003, Math.sin(a) * 0.020], 0.003, 4);
+            rod(d, M.woodLight, [Math.cos(a) * 0.010, 0.017, Math.sin(a) * 0.010],
+              [Math.cos(a) * 0.008, 0.058, Math.sin(a) * 0.008], 0.0008, 3);
+          }
+          break;
+        case 'palm':
+          feature('trunk-leaf-scars'); feature('frond-midribs');
+          for (var i = 1; i < 5; i++) {
+            var y = i * 0.025, x = 0.025 * Math.pow(y / 0.145, 1.8);
+            cylinder(d, M.woodLight, x, y, 0, 0.0073, 0.0077, 0.002, 8);
+          }
+          for (var i = 0; i < 7; i++) {
+            var a = i * Math.PI * 2 / 7;
+            rod(d, M.lime, [0.025, 0.151, 0],
+              [0.025 + Math.cos(a) * 0.058, 0.130, -Math.sin(a) * 0.058], 0.0008, 3);
+          }
+          break;
+        case 'desert-pyramid':
+          feature('four-sided-stone-courses'); feature('entrance-lintel');
+          for (var side = 0; side < 4; side++) {
+            var face = group('pyramid-course-face'); face.rotation.y = side * Math.PI / 2;
+            for (var i = 1; i < 5; i++) {
+              var y = i * 0.026, edge = 0.09546 * (1 - y / 0.15);
+              box(face, M.limestone, 0, y, edge, edge * 1.95, 0.0012, 0.0014);
+              box(face, M.limestone, (i % 2 ? 1 : -1) * edge * 0.35, y - 0.009,
+                edge + 0.0058, 0.0012, 0.012, 0.0015);
+            }
+            d.add(face);
+          }
+          plank(0, 0.047, 0.077, 0.033, 0.006, 0.007, M.trim);
+          break;
+        case 'question-block':
+          feature('recessed-face-border');
+          [-1, 1].forEach(function (s) {
+            [-1, 1].forEach(function (edge) {
+              plank(edge * 0.028, 0.034, s * 0.0294, 0.0015, 0.049, 0.001, M.orange);
+              plank(0, 0.034 + edge * 0.026, s * 0.0294, 0.053, 0.0015, 0.001, M.orange);
+            });
+          });
+          break;
+        case 'gold-coin':
+          feature('milled-edge');
+          for (var i = 0; i < 12; i++) {
+            var a = i * Math.PI / 6;
+            var notch = plank(Math.cos(a) * 0.029, 0.031 + Math.sin(a) * 0.029,
+              0, 0.0012, 0.002, 0.007, M.trim); notch.rotation.z = a;
+          }
+          break;
+        case 'puff-cloud':
+          feature('layered-underbelly');
+          ball(d, M.pale, -0.024, 0.017, 0.016, 0.033, 0.012, 0.017, 8);
+          ball(d, M.cloud, 0.026, 0.019, 0.020, 0.031, 0.014, 0.014, 8);
+          break;
+        case 'sailboat':
+          feature('deck-plank-joints'); feature('standing-rigging'); feature('hull-strakes');
+          for (var i = 0; i < 5; i++) plank(-0.038 + i * 0.019, 0.0355, 0, 0.001, 0.001, 0.030, M.brown);
+          [-1, 1].forEach(function (s) {
+            rod(d, M.brown, [0, 0.147, 0], [s * 0.047, 0.036, 0.010], 0.00065, 3);
+            plank(0, 0.027, s * 0.021, 0.090, 0.002, 0.001, M.woodLight);
+          });
+          break;
+        case 'automation-workshop':
+          feature('timber-diagonal-braces'); feature('roof-ridge-and-eaves');
+          [-1, 1].forEach(function (s) {
+            rod(d, M.wood, [-0.028 + s * 0.052, 0.073, 0.043],
+              [-0.028 + s * 0.030, 0.109, 0.043], 0.002, 4);
+            plank(-0.028 + s * 0.067, 0.114, -0.005, 0.003, 0.004, 0.105, M.steel);
+          });
+          plank(-0.028, 0.162, -0.005, 0.004, 0.003, 0.105, M.steel);
+          break;
+        case 'data-harbor':
+          feature('warehouse-board-joints'); feature('jetty-cross-bracing'); feature('crane-footplate');
+          for (var i = 0; i < 6; i++) plank(-0.084 + i * 0.016, 0.078, 0.028,
+            0.0009, 0.071, 0.001, M.limestone);
+          [-1, 1].forEach(function (s) {
+            rod(d, M.woodLight, [s * 0.090, 0.005, -0.032], [s * 0.090, 0.027, 0.080], 0.002, 4);
+          });
+          plank(0.063, 0.038, -0.008, 0.030, 0.004, 0.031, M.steel);
+          break;
+      }
+      model.add(d);
+      model.userData.refinement = features;
+    }
+
     function authored(builder, width, height) {
       return function (variant) {
         var model = builder(variant);
+        refine(model);
         var bounds = new T.Box3().setFromObject(model);
         var size = bounds.getSize(new T.Vector3());
         model.scale.set(width / size.x, height / size.y, width / size.x);
@@ -719,6 +851,7 @@
         var actual = new T.Box3().setFromObject(result).getSize(new T.Vector3());
         result.userData.dimensions = { width: actual.x, height: actual.y, depth: actual.z };
         result.userData.authorship = 'self-authored procedural geometry';
+        result.userData.refinement = model.userData.refinement.slice();
         return result;
       };
     }

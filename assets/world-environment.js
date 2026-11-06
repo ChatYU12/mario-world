@@ -5,7 +5,7 @@
  */
 (function (root) {
   'use strict';
-  var VERSION = '1.1.0';
+  var VERSION = '1.2.0';
   var DEFAULTS = { timeOfDay: 14, weather: 'clear', animate: true, cycle: false };
   var WEATHER = {
     clear:  { top: '#72b5df', horizon: '#dceef1', cover: .20, light: 1, near: 105, far: 310 },
@@ -134,7 +134,7 @@
     var environment = new T.Group(); environment.name = 'world-environment'; scene.add(environment);
     environment.userData.environment = { version: VERSION, ownsScheduler: false, renderTargets: 0 };
     var originalBackground = scene.background, originalFog = scene.fog;
-    var waters = [], ownLights = [], savedLights = [];
+    var waters = [], ownLights = [], savedLights = [],mapWeather=null;
     var cameraPosition = new T.Vector3(), forward = new T.Vector3(), precipitationCenter = new T.Vector3();
     var sunDirection = new T.Vector3(), lightDirection = new T.Vector3();
     var colors = {};
@@ -255,6 +255,7 @@
       return material;
     }
 
+    function attachMap(parent,settings){if(disposed||mapWeather)return mapWeather;if(!root.MarioMapWeather)throw new Error('World-space map weather module is missing.');mapWeather=root.MarioMapWeather.create(T,parent,settings||{});precipitation.visible=false;return mapWeather;}
     var viewDistance=0,transitionAge=2,transitionDuration=1.6,transitioning=false,lightingDirty=true,lightingUpdates=0;
     var visual={hour:state.timeOfDay,cover:.2,light:1,near:105,far:310,rain:0,snow:0,top:new T.Color(WEATHER.clear.top),horizon:new T.Color(WEATHER.clear.horizon)},fromVisual=null;
     function captureVisual(){return{hour:visual.hour,cover:visual.cover,light:visual.light,near:visual.near,far:visual.far,rain:visual.rain,snow:visual.snow,top:visual.top.clone(),horizon:visual.horizon.clone()};}
@@ -265,7 +266,7 @@
       visual.top.copy(f.top).lerp(p.topColor,t);visual.horizon.copy(f.horizon).lerp(p.horizonColor,t);lightingDirty=true;
     }
     function setFogRange(){var p=visual,offset=Math.max(0,viewDistance-120);fog.near=p.near+offset;fog.far=p.far+offset;waters.forEach(function(w){if(w.kind==='map')w.material.uniforms.uFogRange.value.set(fog.near,fog.far);});}
-    function updatePrecipitation(){var amount=clamp(visual.rain+visual.snow,0,1),compact=number(root.innerWidth,1024)<700;
+    function updatePrecipitation(){if(mapWeather){precipitation.visible=false;return;}var amount=clamp(visual.rain+visual.snow,0,1),compact=number(root.innerWidth,1024)<700;
       particleCount=isMap(mode)&&amount>.003?(quality==='smooth'?24:compact?64:quality==='detail'?192:128):0;
       precipitation.visible=particleCount>0;particleGeometry.setDrawRange(0,particleCount);shared.uFall.value=amount;
       particleMaterial.uniforms.uSnow.value=amount>.001?visual.snow/amount:0;
@@ -325,7 +326,7 @@
       shared.uTime.value=elapsed;if(lightingDirty)applyLighting();
       if(camera){
         camera.getWorldPosition(cameraPosition);sky.position.copy(cameraPosition);sky.scale.setScalar(Math.max(.5,Math.min(420,number(camera.far,1000)*.80)));
-        camera.getWorldDirection(forward);
+        if(!mapWeather){camera.getWorldDirection(forward);
         var sea=.48,mapWater=null;
         for(var w=0;w<waters.length;w++)if(waters[w].kind==='map'){mapWater=waters[w];sea=mapWater.depth.seaLevel;break;}
         var reach=forward.y<-.05?clamp((sea+3-cameraPosition.y)/forward.y,0,90):35;
@@ -333,8 +334,9 @@
         var floor=sea;
         if(mapWater&&typeof mapWater.depth.sampler==='function')floor=number(mapWater.depth.sampler(precipitationCenter.x,precipitationCenter.z),sea);
         precipitation.position.set(precipitationCenter.x,Math.max(sea,floor)+.8,precipitationCenter.z);
-        particleMaterial.uniforms.uPointScale.value=clamp(180/Math.max(.35,Math.tan(number(camera.fov,38)*Math.PI/360)),150,450);
+        particleMaterial.uniforms.uPointScale.value=clamp(180/Math.max(.35,Math.tan(number(camera.fov,38)*Math.PI/360)),150,450);}
       }
+      if(mapWeather){mapWeather.update(elapsed,{mode:mode,quality:quality,rain:visual.rain,snow:visual.snow,wind:shared.uWind.value,day:day,animate:animate,compact:number(root.innerWidth,1024)<700,pointScale:number(viewer.height,800)*number(viewer.pixelRatio,1)/(2*Math.tan(number(camera&&camera.fov,38)*Math.PI/360))});particleCount=mapWeather.getParticleCount();}
       // Scene.matrixWorldAutoUpdate is disabled by the host engine. This root is
       // deliberately outside its frozen terrain groups; lights also need updates.
       environment.updateMatrixWorld(true);key.updateMatrixWorld(true);fill.updateMatrixWorld(true);hemisphere.updateMatrixWorld(true);if(key.target)key.target.updateMatrixWorld(true);
@@ -342,19 +344,19 @@
     }
     function byteSize(geometry){var bytes=0;if(!geometry)return bytes;Object.keys(geometry.attributes).forEach(function(k){bytes+=geometry.attributes[k].array.byteLength;});if(geometry.index)bytes+=geometry.index.array.byteLength;return bytes;}
     function getState() {
-      var textureBytes=disposed?0:(64*64+128*128)*4;
+      var weatherState=mapWeather?mapWeather.getState():null;var textureBytes=(disposed?0:(64*64+128*128)*4)+(weatherState?weatherState.textureBytes:0);
       var waterState=waters.map(function(w){textureBytes+=w.depth.width*w.depth.height*4;return{kind:w.kind,depthSource:w.depth.source,depthSize:[w.depth.width,w.depth.height],singlePass:true,material:w.material.type};});
       return {timeOfDay:state.timeOfDay,weather:state.weather,animate:state.animate,cycle:state.cycle,
         version:VERSION,mode:mode,quality:quality,reducedMotion:reducedMotion(),effectiveAnimate:!disposed&&motionAllowed()&&isMap(mode),effectiveCycle:!disposed&&motionAllowed()&&state.cycle,
         transitioning:!disposed&&transitioning,renderTimeOfDay:visual.hour,weatherBlend:{rain:visual.rain,snow:visual.snow,cloudCover:visual.cover},lightingUpdates:lightingUpdates,needsAnimation:!disposed&&(transitioning||motionAllowed()&&(state.cycle||isMap(mode))),disposed:disposed,revision:revision,
         sunAltitude:sunAltitude,sunDirection:sunDirection.toArray(),dayFactor:day,elapsed:elapsed,
-        waterCount:waters.length,water:waterState,particleCount:particleCount,
-        resources:{renderTargets:0,textureCount:disposed?0:2+waters.length,textureBytes:textureBytes,
-          geometryBytes:byteSize(skyGeometry)+byteSize(particleGeometry),skyTriangles:disposed?0:960,
-          extraVisibleDraws:disposed?0:(sky.visible?1:0)+(precipitation.visible?1:0),maxParticles:192}}
+        waterCount:waters.length,water:waterState,particleCount:particleCount,mapWeather:weatherState,
+        resources:{renderTargets:0,textureCount:disposed?0:2+waters.length+(mapWeather?1:0),textureBytes:textureBytes,
+          geometryBytes:byteSize(skyGeometry)+byteSize(particleGeometry)+(weatherState?weatherState.geometryBytes:0),skyTriangles:disposed?0:960,
+          extraVisibleDraws:disposed?0:(sky.visible?1:0)+(precipitation.visible?1:0)+(weatherState?weatherState.visibleDraws:0),maxParticles:mapWeather?2048:192}}
     }
     function dispose() {
-      if(disposed)return;disposed=true;needsAnimation=false;
+      if(disposed)return;disposed=true;needsAnimation=false;if(mapWeather)mapWeather.dispose();
       waters.forEach(function(w){if(w.mesh.material===w.material)w.mesh.material=w.originalMaterial;if(w.mesh.userData.environmentWater===w.metadata){if(w.originalMetadata===undefined)delete w.mesh.userData.environmentWater;else w.mesh.userData.environmentWater=w.originalMetadata;}w.material.dispose();w.depth.texture.dispose();});waters.length=0;
       if(scene.background===horizon)scene.background=originalBackground;if(scene.fog===fog)scene.fog=originalFog;
       savedLights.forEach(function(s){s.light.color.copy(s.color);s.light.intensity=s.intensity;s.light.position.copy(s.position);if(s.ground&&s.light.groundColor)s.light.groundColor.copy(s.ground);if(s.target&&s.light.target)s.light.target.position.copy(s.target);s.light.updateMatrixWorld(true);if(s.light.target)s.light.target.updateMatrixWorld(true);});
@@ -365,7 +367,7 @@
     var frameState={};
     function getFrameState(){frameState.weather=state.weather;frameState.quality=quality;frameState.mode=mode;frameState.cycle=state.cycle;frameState.transitioning=transitioning;return frameState;}
     applyLighting();environment.updateMatrixWorld(true);
-    return {getFrameState:getFrameState,configure:configure,getState:getState,attachWater:attachWater,update:update,dispose:dispose};
+    return {getFrameState:getFrameState,configure:configure,getState:getState,attachWater:attachWater,attachMap:attachMap,getMapWeather:function(){return mapWeather;},update:update,dispose:dispose};
   }
   root.MarioWorldEnvironment={version:VERSION,create:create};
 })(typeof window!=='undefined'?window:globalThis);

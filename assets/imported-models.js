@@ -30,16 +30,71 @@
       if(!materials.has(key)){var m=new T.MeshStandardMaterial({color:tint,vertexColors:true,roughness:roughness,metalness:0,opacity:opacity,transparent:opacity<1,depthWrite:opacity>=1,side:doubleSided?T.DoubleSide:T.FrontSide});m.name='imported-kaykit-pastel';materials.set(key,m);}
       return materials.get(key);
     }
+    // Additions are local authored joinery, separate from the licensed source
+    // buffers above. Surface rays anchor each seam to the actual asset instead
+    // of assuming all twelve buildings share a box-shaped facade.
+    var detailGeometries=new Map();
+    var DETAILS={
+      houseA:{feature:'window-sills-and-door-joinery',front:[[-.23,.29,.13,0],[.23,.29,.13,0],[0,.16,.19,0],[0,.10,0,.14]],roof:3},
+      houseB:{feature:'upper-storey-timber-and-roof-seams',front:[[-.23,.31,0,.22],[.23,.31,0,.22],[0,.43,.52,0],[0,.20,.20,0]],roof:4},
+      tavern:{feature:'shopfront-lintel-and-sign-brackets',front:[[-.28,.27,0,.20],[.28,.27,0,.20],[0,.38,.58,0],[-.18,.53,.11,0],[.18,.53,.11,0]],roof:3},
+      blacksmith:{feature:'forge-lintel-and-workbench-joinery',front:[[-.26,.23,0,.20],[.26,.23,0,.20],[0,.36,.58,0],[0,.13,.44,0]],roof:3},
+      market:{feature:'stall-counter-plank-joints-and-awning-seams',front:[[-.26,.18,0,.13],[0,.18,0,.13],[.26,.18,0,.13],[0,.28,.65,0]],roof:4},
+      lumbermill:{feature:'sawmill-timber-cross-members',front:[[-.25,.25,0,.27],[.25,.25,0,.27],[0,.38,.55,0],[0,.13,.55,0]],roof:3},
+      windmill:{feature:'mill-storey-bands-and-entry-threshold',front:[[0,.19,.25,0],[0,.35,.33,0],[-.12,.25,0,.18],[.12,.25,0,.18]],roof:3},
+      watermill:{feature:'watermill-sill-and-wheel-side-joinery',front:[[-.25,.22,0,.21],[.25,.22,0,.21],[0,.34,.52,0],[0,.12,.42,0]],roof:3},
+      watchtower:{feature:'tower-storey-ledgers-and-braces',front:[[0,.25,.48,0],[0,.46,.48,0],[-.23,.35,0,.18],[.23,.35,0,.18]],roof:3},
+      well:{feature:'well-curb-joints-and-roof-battens',front:[[-.25,.18,0,.16],[0,.18,0,.16],[.25,.18,0,.16],[0,.29,.58,0]],roof:3},
+      bridge:{feature:'deck-board-joints-and-rail-joinery',front:[[0,.26,.56,0],[0,.45,.56,0]],roof:6},
+      barrel:{feature:'stave-joints-and-head-planks',front:[[-.22,.50,0,.62],[0,.50,0,.62],[.22,.50,0,.62]],roof:4}
+    };
+    function detailGeometry(name,source){
+      if(detailGeometries.has(name))return detailGeometries.get(name);
+      var spec=DETAILS[name],bounds=source.geometry.boundingBox,size=bounds.getSize(new T.Vector3());
+      var ray=new T.Raycaster(),positions=[],normals=[],uvs=[],colors=[],indices=[];
+      var wood=new T.Color(0xc59266).convertSRGBToLinear(),trim=new T.Color(0xffe5ba).convertSRGBToLinear();
+      function surface(x,y,roof){
+        var origin=new T.Vector3(x*size.x,size.y*y,bounds.max.z+1);
+        if(roof)origin.set(x*size.x,bounds.max.y+1,y*size.z);
+        ray.set(origin,roof?new T.Vector3(0,-1,0):new T.Vector3(0,0,-1));
+        var hit=ray.intersectObject(source,false)[0];
+        return hit?hit.point.addScaledVector(hit.face.normal,.0018):null;
+      }
+      function seam(a,b,color){
+        if(!a||!b||a.distanceTo(b)<.004)return;
+        var length=a.distanceTo(b),part=new T.BoxGeometry(.006,length,.005);
+        var q=new T.Quaternion().setFromUnitVectors(new T.Vector3(0,1,0),b.clone().sub(a).normalize());
+        part.applyQuaternion(q);part.translate((a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2);
+        var p=part.attributes.position,n=part.attributes.normal,uv=part.attributes.uv,offset=positions.length/3;
+        // Keep every addition within the exact original footprint and height.
+        for(var i=0;i<p.count;i++){
+          positions.push(Math.max(bounds.min.x,Math.min(bounds.max.x,p.getX(i))),Math.max(bounds.min.y,Math.min(bounds.max.y,p.getY(i))),Math.max(bounds.min.z,Math.min(bounds.max.z,p.getZ(i))));
+          normals.push(n.getX(i),n.getY(i),n.getZ(i));uvs.push(uv.getX(i),uv.getY(i));colors.push(color.r,color.g,color.b);
+        }
+        for(var i=0;i<part.index.count;i++)indices.push(offset+part.index.getX(i));part.dispose();
+      }
+      spec.front.forEach(function(line){seam(surface(line[0]-line[2]/2,line[1]-line[3]/2,false),surface(line[0]+line[2]/2,line[1]+line[3]/2,false),wood);});
+      for(var i=0;i<spec.roof;i++){
+        var x=(i-(spec.roof-1)/2)*.10;
+        seam(surface(x,-.23,true),surface(x,0,true),trim);
+        seam(surface(x,0,true),surface(x,.23,true),trim);
+      }
+      var g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.setAttribute('uv',new T.Float32BufferAttribute(uvs,2));g.setAttribute('color',new T.Float32BufferAttribute(colors,3));g.setIndex(indices);g.computeBoundingBox();g.computeBoundingSphere();
+      g.userData.feature=spec.feature;detailGeometries.set(name,g);return g;
+    }
     function build(name,style){
       if(!Object.prototype.hasOwnProperty.call(DATA,name))throw new Error('Unknown imported model: '+name);
       var record=METADATA.models[name],group=new T.Group(),mesh=new T.Mesh(geometry(name),material(style,DATA[name].doubleSided));
       group.name='imported-'+name;mesh.name='imported-mesh-'+name;mesh.castShadow=true;mesh.receiveShadow=true;
       group.add(mesh);group.userData.modelName=name;group.userData.imported=true;
+      var detail=new T.Mesh(detailGeometry(name,mesh),material(style,DATA[name].doubleSided));
+      detail.name='authored-detail-'+name;detail.castShadow=true;detail.receiveShadow=true;group.add(detail);
+      group.userData.refinement={feature:DETAILS[name].feature,triangles:detail.geometry.index.count/3,authorship:'self-authored surface joinery; source buffers unchanged'};
       group.userData.dimensions=Object.assign({},record.dimensions);
       group.userData.source={author:METADATA.author,license:METADATA.license,model:record.sourceFile,triangles:record.triangles};
       return group;
     }
-    return {names:names,metadata:METADATA,build:build,has:function(name){return Object.prototype.hasOwnProperty.call(DATA,name);},dispose:function(){geometries.forEach(function(g){g.dispose();});materials.forEach(function(m){m.dispose();});geometries.clear();materials.clear();}};
+    return {names:names,metadata:METADATA,build:build,has:function(name){return Object.prototype.hasOwnProperty.call(DATA,name);},dispose:function(){detailGeometries.forEach(function(g){g.dispose();});detailGeometries.clear();geometries.forEach(function(g){g.dispose();});materials.forEach(function(m){m.dispose();});geometries.clear();materials.clear();}};
   }
   root.MarioImportedModels={version:METADATA.version,names:names,metadata:METADATA,create:create};
 })(typeof window!=='undefined'?window:globalThis);
