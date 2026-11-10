@@ -30,3 +30,14 @@ html[data-world-mode="map"] #stage{filter:saturate(1.14) contrast(1.07)}
    they belong and the page exactly one viewport wide. */
 .world-pins{overflow:clip}
 html{overflow-x:clip}
+
+/* The half-turn control only exists on the mainland: the globe keeps its own
+   toolbar, so the map tools are a separate, self-contained cluster. */
+.island-tools{position:absolute;right:18px;bottom:76px;display:none;gap:6px;z-index:2}
+html[data-world-mode="map"] .island-tools{display:flex}
+.island-tools button{appearance:none;border:0;cursor:pointer;padding:8px 14px;border-radius:980px;
+  font-size:12px;line-height:1;color:#1f3a40;background:rgba(255,255,255,.88);
+  box-shadow:0 8px 22px rgba(24,48,56,.14);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.island-tools button:hover{background:#fff}
+.island-tools button:focus-visible{outline:2px solid #2f6f8c;outline-offset:2px}
+@media (max-width:640px){.island-tools{right:12px;bottom:122px}.island-tools button{padding:7px 11px;font-size:11px}}

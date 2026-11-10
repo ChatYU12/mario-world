@@ -21,8 +21,8 @@
    * single building; ISO.zooms only names the three framings the +/-, wheel and pinch
    * controls snap to on a key press, it is not a limit on how close the camera may go.
    */
-  var ISO={azimuth:45,elevation:35.264,distance:240,margin:.05,zooms:[1,1.45,2.1],zoomMax:6,
-    regionDistance:42,closeDistance:30,nearSlack:60,farSlack:260,
+  var ISO={azimuth:45,elevation:35.264,distance:240,margin:.05,zooms:[1,1.45,2.1],zoomMax:12,
+    regionDistance:42,closeDistance:30,focusZoom:11,nearSlack:60,farSlack:260,
     fogNearOffset:-15,fogFarOffset:190};
   var ISO_RAD=Math.PI/180;
   function isoDirection(azimuth, elevation) {
@@ -129,6 +129,11 @@
     // activeCamera() instead of naming one.
     var iso=new T.OrthographicCamera(-1,1,1,-1,.05,1000);
     var isoEyeDirection=isoDirection(),isoHeights=null,isoBase=null;
+    // The island can be inspected from the opposite side: isoYaw stays 0 or PI and the
+    // eased value is what the camera uses, so a 180 degree turn is an animation rather
+    // than a jump. Elevation never changes, so the plate keeps its isometric angle.
+    var isoYaw=0,isoYawTarget=0;
+    function isoEyeFor(yaw){return isoDirection(ISO.azimuth+(yaw||0)*180/Math.PI,ISO.elevation);}
     var isoView={zoom:1,halfHeight:1,halfWidth:1,height:2,width:2,near:.05,far:1000},isoAim=new T.Vector3();
     var overviewDistance=opts.startDistance||4.8,raf=0,disposed=false,visible=true,frames=0;
     var dirty=true,lastRenderAt=-1000,contextLost=false,contextLosses=0,recoveryTimer=0,lostSnapshot=null;
@@ -157,7 +162,7 @@
       yaw:opts.initialYaw||0,pitch:opts.initialPitch===undefined?.16:opts.initialPitch,
       targetYaw:0,targetPitch:.16,distance:overviewDistance,targetDistance:overviewDistance,
       mapDistance:135,mapTargetDistance:42,mapTarget:new T.Vector3(),mapDesired:new T.Vector3(),
-      dragging:false,moved:0,hover:null,transitionTime:0,pending:null,fade:1,activePlace:null,activeNpc:null};
+      dragging:false,moved:0,hover:null,transitionTime:0,pending:null,fade:1,activePlace:null,activeNpc:null,focusNpc:null,focusNpcPosition:null};
     // mapView stays public state (snapshots, opts.onMapViewChange, getMapView()) but a
     // fixed isometric camera cannot swing to an "immersive" compass direction, so the
     // recorded value no longer moves the eye.
@@ -210,10 +215,11 @@
     }
     function isoBaseFrustum(){
       var aspect=isoAspect(),heights=isoHeightRange(),frame=map?landBounds():geography.bounds;
-      if(!isoBase||isoBase.aspect!==aspect||isoBase.minY!==heights.min||isoBase.maxY!==heights.max||isoBase.frame!==frame){
-        isoBase=isoFrustum(frame,0,0,aspect,1,isoEyeDirection);
-        isoBase.depth=Math.max(isoBase.depth,isoExtents(frame,heights.min,heights.max,isoEyeDirection).depth);
-        isoBase.aspect=aspect;isoBase.minY=heights.min;isoBase.maxY=heights.max;isoBase.frame=frame;
+      if(!isoBase||isoBase.aspect!==aspect||isoBase.minY!==heights.min||isoBase.maxY!==heights.max||isoBase.frame!==frame||isoBase.yaw!==isoYaw){
+        var direction=isoEyeFor(isoYaw);
+        isoBase=isoFrustum(frame,0,0,aspect,1,direction);
+        isoBase.depth=Math.max(isoBase.depth,isoExtents(frame,heights.min,heights.max,direction).depth);
+        isoBase.aspect=aspect;isoBase.minY=heights.min;isoBase.maxY=heights.max;isoBase.frame=frame;isoBase.yaw=isoYaw;
       }
       return isoBase;
     }
@@ -224,6 +230,7 @@
        aim (shift = fraction × frustum extent). */
     function syncIsoCamera(){
       if(!geography||!state)return isoView;
+      isoEyeDirection=isoEyeFor(isoYaw);
       var base=isoBaseFrustum(),zoom=zoomForDistance(state.mapDistance,isoWholeDistance());
       var halfHeight=base.height/(2*Math.max(.05,zoom)),halfWidth=halfHeight*isoAspect();
       var panRight=0,panUp=0;
@@ -255,6 +262,20 @@
       state.mapTargetDistance=distanceForZoom(next,whole);
       return true;
     }
+    /* Half turn: the camera keeps its elevation and its distance, only the azimuth
+       flips, so the user can look at the backs of the buildings. The eased value drives
+       the camera; the target is what snapshots and getIsoYaw report. */
+    function rotateIso(direction){
+      if(!isIsoMode())return false;
+      var next=Math.abs(isoYawTarget)>Math.PI/2?0:Math.PI;
+      if(Math.abs(next-isoYawTarget)<1e-6&&Math.abs(isoYaw-next)<1e-4)return false;
+      isoYawTarget=next;invalidate();return true;
+    }
+    function setIsoYaw(value){
+      var next=isFinite(value)?Math.max(0,Math.min(Math.PI,value)):0;
+      isoYaw=isoYawTarget=next;invalidate();return true;
+    }
+    function getIsoYaw(){return isoYaw;}
     /* Discrete step, kept for the keyboard shortcuts and the accessibility buttons:
        the wheel and pinch use zoomIso so they feel like a camera, not a slide deck. */
     function stepIsoZoom(closer){
@@ -294,7 +315,7 @@
     /* `distance` is the public map scalar and already encodes the isometric zoom tier;
        `zoom` records the resolved tier so a restored view reports the same framing even
        if the viewport aspect (and therefore the whole-island distance) changed. */
-    function snapshot(){return{mode:state.mode==='descending'?'map':state.mode,region:state.mode==='descending'?state.pending:state.region,selected:state.selected,place:state.activePlace,npc:state.activeNpc,yaw:state.yaw,pitch:state.pitch,distance:state.mode==='descending'?42:(state.mode==='map'||state.mode==='focus')?state.mapTargetDistance:state.targetDistance,zoom:isIsoMode()?zoomForDistance(state.mapTargetDistance,isoWholeDistance()):null,target:state.mode==='descending'?null:state.mapDesired.toArray(),environment:environment?environment.getState():null,mapView:mapView};}
+    function snapshot(){return{mode:state.mode==='descending'?'map':state.mode,region:state.mode==='descending'?state.pending:state.region,selected:state.selected,place:state.activePlace,npc:state.activeNpc,yaw:state.yaw,pitch:state.pitch,distance:state.mode==='descending'?42:(state.mode==='map'||state.mode==='focus')?state.mapTargetDistance:state.targetDistance,zoom:isIsoMode()?zoomForDistance(state.mapTargetDistance,isoWholeDistance()):null,target:state.mode==='descending'?null:state.mapDesired.toArray(),isoYaw:isoYawTarget,environment:environment?environment.getState():null,mapView:mapView};}
     function notifyMode(){if(opts.onModeChange)opts.onModeChange(state.mode,state.region);}
     function notifyRegion(id){
       state.region=id;
@@ -364,7 +385,7 @@
       mapGroup.traverse(function(o){if(o.isMesh&&o.userData.nodeId)mapPickTargets.push(o);});if(enrichment)mapPickTargets=Array.from(new Set(mapPickTargets.concat(enrichment.pickTargets)));
       if(mapVillage)mapPickTargets=Array.from(new Set(mapPickTargets.concat(mapVillage.pickTargets)));
       if(mapFrontier)mapPickTargets=Array.from(new Set(mapPickTargets.concat(mapFrontier.pickTargets)));
-      if(enrichment&&pinHost)enrichment.places.forEach(function(place){var npc=enrichment.npcs.find(function(n){return n.placeId===place.id;}),button=document.createElement('button');button.type='button';button.className='resident-pin';button.hidden=true;button.textContent=place.npcName;button.setAttribute('aria-label','与'+place.npcName+'交流，体验'+place.title);button.addEventListener('click',function(e){e.stopPropagation();openPlace(place.id,npc&&npc.id);});pinHost.appendChild(button);residentLabels.push({button:button,place:place,npc:npc});});
+      if(enrichment&&pinHost)enrichment.places.forEach(function(place){var npc=enrichment.npcs.find(function(n){return n.placeId===place.id;}),button=document.createElement('button');button.type='button';button.className='resident-pin';button.hidden=true;button.textContent=place.npcName;button.setAttribute('aria-label','与'+place.npcName+'交流，体验'+place.title);button.addEventListener('click',function(e){e.stopPropagation();if(npc)focusResident(npc.id,null);openPlace(place.id,npc&&npc.id);});pinHost.appendChild(button);residentLabels.push({button:button,place:place,npc:npc});});
       freeze(mapGroup);
     }
     function closeStory(){
@@ -455,13 +476,58 @@
       invalidate();
     }
     function clear(){if(state.activePlace){closePlace();return;}if(state.mode==='map'||state.mode==='focus')closeStory();else overview();}
-    function closePlace(){if(!state.activePlace)return;state.activePlace=null;state.activeNpc=null;extraAnimation=false;if(opts.onPlaceSelect)opts.onPlaceSelect(null);invalidate();}
+    /* Resident close-up. The instance matrices are animated by the village layer, so the
+       caller may pass the live world position; without one the resident list is the last
+       known placement, which is within a metre of where the walk cycle has them. */
+    function residentPosition(npcId){
+      if(!npcId)return null;
+      var lists=[mapVillage&&mapVillage.residents,mapFrontier&&mapFrontier.residents,enrichment&&enrichment.npcs],i,j,entry,px,pz;
+      for(i=0;i<lists.length;i++){
+        var list=lists[i];if(!list)continue;
+        for(j=0;j<list.length;j++){
+          entry=list[j];if(!entry)continue;
+          if(entry.id!==npcId&&entry.npcId!==npcId)continue;
+          px=entry.x!==undefined?entry.x:(entry.position?entry.position.x:NaN);
+          pz=entry.z!==undefined?entry.z:(entry.position?entry.position.z:NaN);
+          if(isFinite(px)&&isFinite(pz))return{x:px,z:pz};
+        }
+      }
+      return null;
+    }
+    function focusResident(npcId,worldPosition){
+      if(!map||!isIsoMode())return false;
+      var target=worldPosition&&isFinite(worldPosition.x)&&isFinite(worldPosition.z)?worldPosition:null;
+      if(!target){var found=residentPosition(npcId);if(!found)return false;target={x:found.x,z:found.z,y:map.heightAt(found.x,found.z)};}
+      var groundY=isFinite(target.y)?target.y:map.heightAt(target.x,target.z);
+      state.focusNpc=npcId||'resident';
+      state.focusNpcPosition={x:target.x,y:groundY,z:target.z};
+      state.mapDesired.set(target.x,groundY+0.9,target.z);
+      state.mapTargetDistance=distanceForZoom(ISO.focusZoom,isoWholeDistance());
+      clampMap();invalidate();return true;
+    }
+    function exitResidentFocus(){
+      if(!state.focusNpc)return false;
+      var resumePlace=state.activePlace;
+      state.focusNpc=null;state.focusNpcPosition=null;
+      if(resumePlace&&map){var anchor=map.focusPoints&&map.focusPoints[resumePlace];if(anchor)state.mapDesired.copy(anchor);}
+      state.mapTargetDistance=distanceForZoom(ISO.zooms[1],isoWholeDistance());
+      invalidate();return true;
+    }
+    function getResidentFocus(){
+      if(!state.focusNpc)return null;
+      return{npcId:state.focusNpc,position:state.focusNpcPosition?{x:state.focusNpcPosition.x,y:state.focusNpcPosition.y,z:state.focusNpcPosition.z}:null,zoom:zoomForDistance(state.mapTargetDistance,isoWholeDistance())};
+    }
+    function closePlace(){if(!state.activePlace)return;var resumePlace=state.activePlace;state.activePlace=null;state.activeNpc=null;extraAnimation=false;
+      if(state.focusNpc){state.focusNpc=null;state.focusNpcPosition=null;var anchor=map&&map.focusPoints&&map.focusPoints[resumePlace];if(anchor)state.mapDesired.copy(anchor);state.mapTargetDistance=distanceForZoom(ISO.zooms[1],isoWholeDistance());}
+      if(opts.onPlaceSelect)opts.onPlaceSelect(null);invalidate();}
     function openPlace(id,npcId){
       if(contextLost)return;
       if(!map&&(state.mode==='overview'||state.mode==='descending')){var demo=window.MarioDemoBusinesses&&window.MarioDemoBusinesses.get(id);if(demo){placeRequest={id:id,npcId:npcId};enterRegion(demo.region);}return;}
       ensureMap();if(!enrichment)return;var place=enrichment.places.find(function(p){return p.id===id;});if(!place)return;
       if(state.mode==='overview'||state.mode==='descending'){placeRequest={id:id,npcId:npcId};enterRegion(place.region);return;}
-      closeStory();state.activePlace=id;state.activeNpc=npcId||id;state.mapDesired.copy(place.position);state.mapDesired.y+=1.6;state.mapTargetDistance=window.innerWidth<680?43:30;
+      closeStory();state.activePlace=id;state.activeNpc=npcId||id;
+      // A resident close-up keeps its own framing; only a plain building click re-aims.
+      if(!state.focusNpc){state.mapDesired.copy(place.position);state.mapDesired.y+=1.6;state.mapTargetDistance=window.innerWidth<680?43:30;}
       if(reduced){state.mapTarget.copy(state.mapDesired);state.mapDistance=state.mapTargetDistance;}
       extraAnimation=!reduced;notifyRegion(place.region);if(opts.onPlaceSelect){var resident=enrichment.npcs.find(function(n){return n.id===npcId;});opts.onPlaceSelect(resident?Object.assign({},place,{npcName:resident.name}):place,npcId);}invalidate();
     }
@@ -536,7 +602,7 @@
       if(!state.dragging)return;state.dragging=false;pointerRect=null;canvas.classList.remove('is-dragging');
       if(cancel||state.moved>6||state.mode==='descending')return;
       var hit=pick(e.clientX,e.clientY);
-      if(hit){if(typeof hit==='object')openPlace(hit.placeId||hit.businessId,hit.npcId);else if(state.mode==='overview'||!nodes.some(function(n){return n.id===hit;}))enterRegion(hit);else select(hit);}
+      if(hit){if(typeof hit==='object'){if(hit.npcId)focusResident(hit.npcId,null);openPlace(hit.placeId||hit.businessId,hit.npcId);}else if(state.mode==='overview'||!nodes.some(function(n){return n.id===hit;}))enterRegion(hit);else select(hit);}
       else if(state.mode==='focus')closeStory();
     }
     listen(canvas,'pointerup',function(e){release(e,false);});listen(canvas,'pointercancel',function(e){release(e,true);});
@@ -546,9 +612,10 @@
     },{passive:false});
     canvas.tabIndex=0;
     listen(canvas,'keydown',function(e){
-      if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','Home'].includes(e.key))return;
+      if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','Home','r','R'].includes(e.key))return;
       e.preventDefault();
       if(isIsoMode()){
+        if(e.key==='r'||e.key==='R'){rotateIso(1);return;}
         var step=state.mapTargetDistance*.065;
         if(e.key==='ArrowLeft')state.mapDesired.x-=step;if(e.key==='ArrowRight')state.mapDesired.x+=step;
         if(e.key==='ArrowUp')state.mapDesired.z-=step;if(e.key==='ArrowDown')state.mapDesired.z+=step;
@@ -578,6 +645,14 @@
     var ro=null,io=null;
     if(typeof ResizeObserver==='function'){ro=new ResizeObserver(resize);ro.observe(canvas.parentElement||canvas.parentNode||canvas);}
     if(opts.pauseOffscreen&&typeof IntersectionObserver==='function'){io=new IntersectionObserver(function(entries){var r=canvas.getBoundingClientRect();visible=entries[0].isIntersecting||(r.width>0&&r.height>0&&r.bottom>0&&r.top<window.innerHeight&&r.right>0&&r.left<window.innerWidth);if(visible)invalidate();else if(raf&&state.mode!=='descending'){cancelAnimationFrame(raf);raf=0;}},{threshold:.01});io.observe(canvas);}
+    // R also works when the canvas is not focused, which is what people expect from a
+    // shortcut; typing into a form field or using a browser chord is left alone.
+    listen(window,'keydown',function(e){
+      if(!isIsoMode())return;
+      var tag=(e.target&&e.target.tagName)||'';
+      if(/^(INPUT|TEXTAREA|SELECT)$/.test(tag)||e.metaKey||e.ctrlKey||e.altKey)return;
+      if(e.key==='r'||e.key==='R'){e.preventDefault();rotateIso(1);}
+    });
     listen(window,'resize',resize);
     listen(document,'visibilitychange',function(){if(document.hidden){if(raf)cancelAnimationFrame(raf);raf=0;return false;}lastRenderAt=performance.now();});
     function recoveryTimeout(){if(disposed||!contextLost)return;if(document.hidden||!visible){recoveryTimer=setTimeout(recoveryTimeout,3000);return;}if(opts.onRecoverNeeded)opts.onRecoverNeeded(lostSnapshot);}
@@ -590,6 +665,7 @@
        applied in one step, exactly like the reduced-motion path. */
     function restoreView(view){
       if(!view)return;
+      isoYaw=isoYawTarget=isFinite(view.isoYaw)?Math.max(0,Math.min(Math.PI,view.isoYaw)):0;
       if(view.mapView)setMapView(view.mapView);
       if(environment&&view.environment)environment.configure(view.environment);
       if(view.mode==='overview'||view.mode==='descending'){
@@ -638,7 +714,7 @@
     }
     // The map camera can no longer orbit, so its only motion is the target easing, the
     // zoom tier easing and the fade.
-    function moving(){if(state.mode==='descending')return true;if(state.mode==='overview')return Math.abs(state.distance-state.targetDistance)>.001;return Math.abs(state.mapDistance-state.mapTargetDistance)>.02||state.mapTarget.distanceToSquared(state.mapDesired)>.0004||state.fade<.999;}
+    function moving(){if(state.mode==='descending')return true;if(state.mode==='overview')return Math.abs(state.distance-state.targetDistance)>.001;return Math.abs(state.mapDistance-state.mapTargetDistance)>.02||state.mapTarget.distanceToSquared(state.mapDesired)>.0004||state.fade<.999||Math.abs(isoYawTarget-isoYaw)>1e-4;}
     function loop(timestamp){
       raf=0;if(disposed||contextLost||document.hidden||(!visible&&state.mode!=='descending'))return;
       var rotating=state.mode==='overview'&&state.autoRotate&&!state.dragging;
@@ -665,8 +741,25 @@
         // camera keeps its 45°/35.264° orientation, so nothing here can rotate or tilt
         // the island. The sidebar offset is applied inside syncIsoCamera as a world-space
         // pan (setViewOffset would shear an orthographic projection).
+        // While a resident is being inspected the camera rides along with them: the
+        // walk cycle moves a metre or two, which would otherwise slide the subject out
+        // of the close-up within a couple of seconds.
+        if(state.focusNpc&&mapVillage&&mapVillage.residents){
+          var followed=null;
+          for(var fi=0;fi<mapVillage.residents.length;fi++){if(mapVillage.residents[fi]&&mapVillage.residents[fi].id===state.focusNpc){followed=mapVillage.residents[fi];break;}}
+          if(!followed&&mapFrontier&&mapFrontier.residents){for(var fj=0;fj<mapFrontier.residents.length;fj++){if(mapFrontier.residents[fj]&&mapFrontier.residents[fj].id===state.focusNpc){followed=mapFrontier.residents[fj];break;}}}
+          if(followed&&isFinite(followed.x)&&isFinite(followed.z)){
+            state.focusNpcPosition.x=followed.x;state.focusNpcPosition.z=followed.z;
+            state.mapDesired.x=followed.x;state.mapDesired.z=followed.z;
+          }
+        }
         state.mapDistance+=(state.mapTargetDistance-state.mapDistance)*(1-Math.exp(-dt*5));
         state.mapTarget.lerp(state.mapDesired,1-Math.exp(-dt*5));
+        if(Math.abs(isoYawTarget-isoYaw)>1e-4){
+          isoYaw+=(isoYawTarget-isoYaw)*(1-Math.exp(-dt/.16));
+          if(Math.abs(isoYawTarget-isoYaw)<1e-4)isoYaw=isoYawTarget;
+          dirty=true;
+        }
         syncIsoCamera();
         state.fade=1;
         if(!state.selected&&state.dragging){var near=map.regions.reduce(function(a,b){return a.position.distanceToSquared(state.mapDesired)<b.position.distanceToSquared(state.mapDesired)?a:b;});if(near.id!==state.region)notifyRegion(near.id);}
@@ -683,6 +776,13 @@
       // distance, the orthographic camera simply maps its frustum height onto the viewport.
       var activeRoot=mapGroup.visible?mapGroup:globe,projection=mapGroup.visible?(viewHeight*pixelRatio/Math.max(.001,isoView.height)):(viewHeight*pixelRatio/(2*Math.tan(camera.fov*Math.PI/360)*Math.max(.5,state.distance-1.15)));if(cameraChanged){lodHidden=0;activeRoot.traverse(function(o){if(o.userData.smallDetail){o.visible=quality==='detail'||o.userData.partRadius*projection>=(active?2.0:.65);if(!o.visible)lodHidden++;}});}
       if(cameraChanged||extraAnimation)activeRoot.updateMatrixWorld(true);if(cameraChanged)activeCamera().updateMatrixWorld(true);
+      // Residents walk while the scene is live. They follow the same "dynamic" switch as
+      // water and weather: turning the environment animation off must leave a still
+      // frame, so the layers stop reporting motion and the scheduler can idle.
+      var environmentLive=environment?(environment.getState().effectiveAnimate!==false):true;
+      var residentsMoving=!reduced&&!opts.compatibility&&environmentLive;
+      if(mapVillage&&typeof mapVillage.update==='function'&&mapGroup.visible){if(mapVillage.update(timestamp/1000,{animate:residentsMoving,reducedMotion:reduced,heightAt:map.heightAt}))extraAnimation=true;}
+      if(mapFrontier&&typeof mapFrontier.update==='function'&&mapGroup.visible){if(mapFrontier.update(timestamp/1000,{animate:residentsMoving,reducedMotion:reduced,heightAt:map.heightAt}))extraAnimation=true;}
       if(groundScatter)groundScatter.update(timestamp/1000,{animate:animateWater&&!reduced,active:active||cameraChanged});
       // The sakura petals live in a vertex uniform, so the layer only asks for a
       // frame while weather animation is on; a still, dry scene keeps it frozen.
@@ -696,6 +796,7 @@
     }
     resize();canvas.style.touchAction=opts.zoom?'none':'pan-y';invalidate();
     return {
+      rotateIso:rotateIso,setIsoYaw:setIsoYaw,getIsoYaw:getIsoYaw,focusResident:focusResident,exitResidentFocus:exitResidentFocus,getResidentFocus:getResidentFocus,
       select:select,focus:select,openPlace:openPlace,closePlace:closePlace,getPlaces:function(){ensureMap();return enrichment?enrichment.places:[];},setQuality:setQuality,getQuality:function(){return quality;},enterRegion:enterRegion,enterMap:enterRegion,clear:clear,overview:overview,mapOverview:mapOverview,
       setAutoRotate:function(on){state.autoRotate=!!on;invalidate();},isAutoRotating:function(){return state.autoRotate;},
       getMode:function(){return state.mode;},getDistance:function(){return state.mode==='map'||state.mode==='focus'?state.mapTargetDistance:state.targetDistance;},
@@ -705,7 +806,7 @@
       getScene:function(){return scene;},getCamera:function(){return activeCamera();},getViewState:snapshot,restoreView:restoreView,
       get selected(){return state.selected;},
       surfaceHeight:function(d){return story.height(d);},
-      getRenderStatus:function(){return{settled:!dirty&&!bufferResizePending&&!(environment&&environment.getFrameState&&environment.getFrameState().transitioning)&&!moving()&&!state.dragging&&!handoffActive&&state.mode!=='descending'&&!(state.mode==='overview'&&state.autoRotate),transition:state.mode==='descending'?'approach':handoffActive?'blend':null,environmentAnimating:environmentAnimating,environmentFPS:environmentFPS,pinsUpdates:pinsUpdates,environment:environment?environment.getState():null,frames:frames,webgl:!contextLost,contextLost:contextLost,contextLosses:contextLosses,paused:!raf,visible:visible,documentHidden:!!document.hidden,dirty:dirty,pixelRatio:pixelRatio,quality:quality,adaptiveScale:dynamicScale,measuredFPS:measuredFPS,lodHidden:lodHidden,drawMS:drawMS,enrichment:enrichment?enrichment.stats:null,village:(mapGroup.visible?mapVillage:globeVillage)?(mapGroup.visible?mapVillage:globeVillage).stats:null,frontier:(mapGroup.visible?mapFrontier:globeFrontier)?(mapGroup.visible?mapFrontier:globeFrontier).stats:null,ground:groundScatter?groundScatter.stats:null,landmarks:islandLandmarks?islandLandmarks.stats:null,maxFPS:maxFPS,geometryBytes:geometryBytes(globe)+geometryBytes(mapGroup),residentGeometryBytes:geometryBytes(gpuResident==='globe'?globe:mapGroup),rendererMemory:renderer.info&&renderer.info.memory,programs:renderer.info&&renderer.info.programs?renderer.info.programs.length:0,compatibility:!!opts.compatibility,rendererAttempts:rendererAttempts,shadows:!!(renderer.shadowMap&&renderer.shadowMap.enabled),calls:renderer.info?renderer.info.render.calls:null,triangles:renderer.info?renderer.info.render.triangles:null,mode:state.mode,camera:{type:isIsoMode()?'orthographic':'perspective',azimuth:ISO.azimuth,elevation:ISO.elevation,eyeDistance:isIsoMode()?ISO.distance:state.distance,zoom:isIsoMode()?isoView.zoom:null,targetZoom:isIsoMode()?zoomForDistance(state.mapTargetDistance,isoWholeDistance()):null,frustumHeight:isIsoMode()?isoView.height:null,frustumWidth:isIsoMode()?isoView.width:null,fogNear:scene.fog?scene.fog.near:null,fogFar:scene.fog?scene.fog.far:null}};},
+      getRenderStatus:function(){return{settled:!dirty&&!bufferResizePending&&!(environment&&environment.getFrameState&&environment.getFrameState().transitioning)&&!moving()&&!state.dragging&&!handoffActive&&state.mode!=='descending'&&!(state.mode==='overview'&&state.autoRotate),transition:state.mode==='descending'?'approach':handoffActive?'blend':null,environmentAnimating:environmentAnimating,environmentFPS:environmentFPS,pinsUpdates:pinsUpdates,environment:environment?environment.getState():null,frames:frames,webgl:!contextLost,contextLost:contextLost,contextLosses:contextLosses,paused:!raf,visible:visible,documentHidden:!!document.hidden,dirty:dirty,pixelRatio:pixelRatio,quality:quality,adaptiveScale:dynamicScale,measuredFPS:measuredFPS,lodHidden:lodHidden,drawMS:drawMS,enrichment:enrichment?enrichment.stats:null,village:(mapGroup.visible?mapVillage:globeVillage)?(mapGroup.visible?mapVillage:globeVillage).stats:null,frontier:(mapGroup.visible?mapFrontier:globeFrontier)?(mapGroup.visible?mapFrontier:globeFrontier).stats:null,ground:groundScatter?groundScatter.stats:null,landmarks:islandLandmarks?islandLandmarks.stats:null,maxFPS:maxFPS,geometryBytes:geometryBytes(globe)+geometryBytes(mapGroup),residentGeometryBytes:geometryBytes(gpuResident==='globe'?globe:mapGroup),rendererMemory:renderer.info&&renderer.info.memory,programs:renderer.info&&renderer.info.programs?renderer.info.programs.length:0,compatibility:!!opts.compatibility,rendererAttempts:rendererAttempts,shadows:!!(renderer.shadowMap&&renderer.shadowMap.enabled),calls:renderer.info?renderer.info.render.calls:null,triangles:renderer.info?renderer.info.render.triangles:null,mode:state.mode,residentFocus:getResidentFocus(),camera:{type:isIsoMode()?'orthographic':'perspective',azimuth:ISO.azimuth,elevation:ISO.elevation,isoYaw:isoYaw,yawTarget:isoYawTarget,eyeDistance:isIsoMode()?ISO.distance:state.distance,zoom:isIsoMode()?isoView.zoom:null,targetZoom:isIsoMode()?zoomForDistance(state.mapTargetDistance,isoWholeDistance()):null,frustumHeight:isIsoMode()?isoView.height:null,frustumWidth:isIsoMode()?isoView.width:null,fogNear:scene.fog?scene.fog.near:null,fogFar:scene.fog?scene.fog.far:null}};},
       stats:function(){var meshes=0,tris=0,instances=0;var root=mapGroup.visible?mapGroup:globe;root.traverse(function(o){if(!o.isMesh)return;meshes++;var g=o.geometry;var count=o.isInstancedMesh?o.count:1;if(o.isInstancedMesh)instances+=o.count;tris+=(g.index?g.index.count/3:g.attributes.position.count/3)*count;});return{meshes:meshes,instances:instances,triangles:Math.round(tris)};},
       openCoast:openCoast,setMapView:setMapView,getMapView:function(){return mapView;},setEnvironment:setEnvironment,getEnvironment:function(){return environment?environment.getState():null;},getMapWeather:function(){return environment&&environment.getMapWeather?environment.getMapWeather():null;},getGroundDetail:function(){return groundScatter?groundScatter.stats:null;},getIslandLandmarks:function(){return islandLandmarks?islandLandmarks.stats:null;},
       resize:resize,destroy:destroy

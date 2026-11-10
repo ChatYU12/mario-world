@@ -119,6 +119,15 @@
       clear();
     }
   });
+  // Half-turn of the isometric mainland. The keyboard shortcut lives in planet3d so it
+  // works with focus on the canvas; this button is the discoverable equivalent and is
+  // disabled while the globe is showing, where the map has no heading to flip.
+  var flip = byId('flip-button');
+  if (flip) flip.addEventListener('click', function () {
+    if (!planet || typeof planet.rotateIso !== 'function') return;
+    planet.rotateIso(1);
+    if (live) live('已旋转大陆视角。');
+  });
   var rotate = byId('rotate-button');
   if (rotate) rotate.addEventListener('click', function () {
     if (!planet) return;

@@ -8,11 +8,11 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="color-scheme" content="light">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23dc6982'/%3E%3Cpath d='M8 31V17h6v-6h5v6h3v-6h5v6h5v14H8z' fill='%23fffdf8'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/site.css?v=20261110-iso2">
-<link rel="stylesheet" href="assets/apple.css?v=20261110-iso2">
-<link rel="stylesheet" href="assets/town-compat.css?v=20261110-iso2">
-<link rel="stylesheet" href="assets/environment.css?v=20261110-iso2">
-<link rel="stylesheet" href="assets/island-ui.css?v=20261110-iso2">
+<link rel="stylesheet" href="assets/site.css?v=20261110-nav2">
+<link rel="stylesheet" href="assets/apple.css?v=20261110-nav2">
+<link rel="stylesheet" href="assets/town-compat.css?v=20261110-nav2">
+<link rel="stylesheet" href="assets/environment.css?v=20261110-nav2">
+<link rel="stylesheet" href="assets/island-ui.css?v=20261110-nav2">
 <script>document.documentElement.classList.add('js-reveal');</script>
 </head>
 <body class="explore-page">
@@ -30,6 +30,7 @@
 <nav class="explore-guide" id="explore-guide" aria-label="能力方向"><span class="small-badge">选择入口，进入地图</span><div class="explore-entries"><button type="button" data-capability="collaboration" aria-pressed="false" style="--tint:#b4647a"><span><strong>智能协作</strong><span>城堡与村落</span></span><span class="entry-dot" aria-hidden="true"></span></button><button type="button" data-capability="automation" aria-pressed="false" style="--tint:#9c742f"><span><strong>业务自动化</strong><span>工坊与道路</span></span><span class="entry-dot" aria-hidden="true"></span></button><button type="button" data-capability="connection" aria-pressed="false" style="--tint:#2f6f8c"><span><strong>数据连接</strong><span>港口与水路</span></span><span class="entry-dot" aria-hidden="true"></span></button></div></nav>
 <p class="explore-footnote">能力方向展示<br>应用场景为示意</p>
 <div class="explore-controls" aria-label="星球控制"><button id="overview-button" type="button">返回星球总览</button><button id="rotate-button" type="button" aria-pressed="false">自动旋转</button></div>
+<div class="island-tools" role="group" aria-label="大陆视角控制"><button id="flip-button" type="button" aria-label="旋转大陆视角 180 度，快捷键 R">旋转视角</button></div>
 <aside class="capability-detail" id="detail" aria-labelledby="detail-title" hidden>
 <div class="detail-top"><span class="small-badge">应用示意</span><button class="close-button" id="detail-close" type="button" aria-label="关闭介绍，继续地图探索">×</button></div>
 <h2 id="detail-title"></h2><p class="detail-scene" id="detail-scene"></p><p class="detail-lede" id="detail-lede"></p>
@@ -40,26 +41,26 @@
 </main>
 <p class="sr-only" id="live" role="status" aria-live="polite"></p>
 <noscript><p style="padding:20px">星球探索需要 JavaScript。你也可以<a href="index.html#capabilities">回到首页阅读三个能力方向</a>。</p></noscript>
-<script src="assets/nodes.js?v=20261110-iso2"></script>
-<script src="assets/three.min.js?v=20261110-iso2"></script>
-<script src="assets/imported-models.js?v=20261110-iso2"></script>
-<script src="assets/world-models.js?v=20261110-iso2"></script>
-<script src="assets/world-geography.js?v=20261110-iso2"></script>
-<script src="assets/story-world.js?v=20261110-iso2"></script>
-<script src="assets/connected-map.js?v=20261110-iso2"></script>
-<script src="assets/demo-businesses.js?v=20261110-iso2"></script>
-<script src="assets/world-enrichment.js?v=20261110-iso2"></script>
-<script src="assets/village-life.js?v=20261110-iso2"></script>
-<script src="assets/frontier-scenes.js?v=20261110-iso2"></script>
-<script src="assets/island-landmarks.js?v=20261110-iso2"></script>
-<script src="assets/ground-scatter.js?v=20261110-iso2"></script>
-<script src="assets/render-quality.js?v=20261110-iso2"></script>
-<script src="assets/map-weather.js?v=20261110-iso2"></script>
-<script src="assets/world-environment.js?v=20261110-iso2"></script>
-<script src="assets/planet3d.js?v=20261110-iso2"></script>
-<script src="assets/town-ui.js?v=20261110-iso2"></script>
-<script src="assets/environment-ui.js?v=20261110-iso2"></script>
-<script src="assets/site.js?v=20261110-iso2"></script>
-<script src="assets/apple-motion.js?v=20261110-iso2"></script>
+<script src="assets/nodes.js?v=20261110-nav2"></script>
+<script src="assets/three.min.js?v=20261110-nav2"></script>
+<script src="assets/imported-models.js?v=20261110-nav2"></script>
+<script src="assets/world-models.js?v=20261110-nav2"></script>
+<script src="assets/world-geography.js?v=20261110-nav2"></script>
+<script src="assets/story-world.js?v=20261110-nav2"></script>
+<script src="assets/connected-map.js?v=20261110-nav2"></script>
+<script src="assets/demo-businesses.js?v=20261110-nav2"></script>
+<script src="assets/world-enrichment.js?v=20261110-nav2"></script>
+<script src="assets/village-life.js?v=20261110-nav2"></script>
+<script src="assets/frontier-scenes.js?v=20261110-nav2"></script>
+<script src="assets/island-landmarks.js?v=20261110-nav2"></script>
+<script src="assets/ground-scatter.js?v=20261110-nav2"></script>
+<script src="assets/render-quality.js?v=20261110-nav2"></script>
+<script src="assets/map-weather.js?v=20261110-nav2"></script>
+<script src="assets/world-environment.js?v=20261110-nav2"></script>
+<script src="assets/planet3d.js?v=20261110-nav2"></script>
+<script src="assets/town-ui.js?v=20261110-nav2"></script>
+<script src="assets/environment-ui.js?v=20261110-nav2"></script>
+<script src="assets/site.js?v=20261110-nav2"></script>
+<script src="assets/apple-motion.js?v=20261110-nav2"></script>
 </body>
 </html>
