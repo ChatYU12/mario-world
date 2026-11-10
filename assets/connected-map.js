@@ -180,7 +180,10 @@
       white: material(0xfff5df), pink: material(0xe5809b),
       greenPipe: material(0x269e63, { metalness: .15, roughness: .4 }),
       bronze: material(0xbe964f, { metalness: .3, roughness: .4 }),
-      leaves: material(0x4e9b56), flowerCenter: material(0xf4ca5a)
+      leaves: material(0x4e9b56), flowerCenter: material(0xf4ca5a),
+      // Kerbs, rut bands and grit patches share one vertex-coloured batch so the
+      // whole road network costs exactly one extra draw call.
+      roadDetail: material(0xffffff, { vertexColors: true, side: T.DoubleSide, name: 'road-detail' })
     };
     // Only the continent and the dirt road receive the micro-surface pass. The
     // lava fissures reuse roadStrip() with M.lava rather than M.path, so leaving
@@ -286,6 +289,81 @@
     // Route geometry follows the shared terrain, then becomes a wooden crossing
     // above the channel. The stored path is the same visible path used to render.
     var routeDefinitions=geo.routeDefinitions;
+    /* Roadside detail: kerb stones with an outer face, two sunken rut bands and
+       scattered grit patches. Everything is authored in world space and pushed into
+       one vertex-coloured batch, so the visual gain costs a single extra draw call
+       rather than one per route. The sampling stride is deliberately coarse (every
+       other curve point) because the top surface is already dense; what was missing
+       was cross-section, not resolution. */
+    var roadDetailPos = [], roadDetailColor = [], roadDetailIndex = [];
+    var KERB_TOP = [0.80, 0.74, 0.63], KERB_FACE = [0.60, 0.55, 0.48];
+    var RUT_COLOR = [0.55, 0.45, 0.33], GRIT_COLOR = [0.70, 0.66, 0.58];
+    function detailVertex(x, y, z, color) {
+      roadDetailPos.push(x, y, z);
+      roadDetailColor.push(color[0], color[1], color[2]);
+      return roadDetailPos.length / 3 - 1;
+    }
+    function detailQuad(a, b, c, d, color) {
+      var i0 = detailVertex(a[0], a[1], a[2], color), i1 = detailVertex(b[0], b[1], b[2], color);
+      var i2 = detailVertex(c[0], c[1], c[2], color), i3 = detailVertex(d[0], d[1], d[2], color);
+      roadDetailIndex.push(i0, i1, i2, i0, i2, i3);
+    }
+    function roadDetail(points, width, stride) {
+      var step = Math.max(1, stride || 2), kerbW = 0.20, kerbH = 0.055, rutW = 0.30;
+      for (var i = 0; i + step < points.length; i += step) {
+        var p = points[i], q = points[i + step];
+        var delta = q.clone().sub(p); delta.y = 0;
+        if (delta.lengthSq() < 1e-6) continue;
+        var side = new T.Vector3().crossVectors(UP, delta).normalize().multiplyScalar(.5);
+        var half = width / 2;
+        for (var sign = -1; sign <= 1; sign += 2) {
+          var ox = side.x * half * sign, oz = side.z * half * sign;
+          var nx = side.x * kerbW * sign, nz = side.z * kerbW * sign;
+          var down = kerbH + .16;
+          // Kerb top: a narrow strip just outside the carriageway.
+          detailQuad(
+            [p.x + ox, p.y + kerbH, p.z + oz], [q.x + ox, q.y + kerbH, q.z + oz],
+            [q.x + ox + nx, q.y + kerbH, q.z + oz + nz], [p.x + ox + nx, p.y + kerbH, p.z + oz + nz],
+            KERB_TOP);
+          // Outer face gives the road a real edge instead of a paper-thin cut.
+          detailQuad(
+            [p.x + ox + nx, p.y + kerbH, p.z + oz + nz], [q.x + ox + nx, q.y + kerbH, q.z + oz + nz],
+            [q.x + ox + nx, q.y + kerbH - down, q.z + oz + nz], [p.x + ox + nx, p.y + kerbH - down, p.z + oz + nz],
+            KERB_FACE);
+        }
+        // Two shallow rut bands, a centimetre and a half below the surface.
+        for (var rs = -1; rs <= 1; rs += 2) {
+          var bx = side.x * (width * .22) * rs, bz = side.z * (width * .22) * rs;
+          var rx = side.x * rutW * .5, rz = side.z * rutW * .5;
+          detailQuad(
+            [p.x + bx - rx, p.y - .015, p.z + bz - rz], [q.x + bx - rx, q.y - .015, q.z + bz - rz],
+            [q.x + bx + rx, q.y - .015, q.z + bz + rz], [p.x + bx + rx, p.y - .015, p.z + bz + rz],
+            RUT_COLOR);
+        }
+        // Every few strides a little grit patch on the shoulder. The jitter is a hash
+        // of the point index and world position, never the shared random stream: the
+        // road must not shift the placement of every tree and flower that follows it.
+        if ((i / step) % 5 === 2) {
+          var hash = function (seed) { var v = Math.sin(seed * 12.9898 + p.x * 78.233 + p.z * 37.719) * 43758.5453; return v - Math.floor(v); };
+          var gs = -1 + hash(1) * 2, gx = side.x * (half + .16) * gs, gz = side.z * (half + .16) * gs;
+          var gr = .18 + hash(2) * .16, gp = .16 + hash(3) * .18;
+          detailQuad(
+            [p.x + gx - gr, p.y + .02, p.z + gz - gr], [p.x + gx + gr, p.y + .02, p.z + gz - gr],
+            [p.x + gx + gr, p.y + .02, p.z + gz + gp], [p.x + gx - gr, p.y + .02, p.z + gz + gp],
+            GRIT_COLOR);
+        }
+      }
+    }
+    function roadDetailMesh() {
+      if (!roadDetailIndex.length) return;
+      var g = new T.BufferGeometry();
+      g.setAttribute('position', new T.Float32BufferAttribute(roadDetailPos, 3));
+      g.setAttribute('color', new T.Float32BufferAttribute(roadDetailColor, 3));
+      g.setIndex(roadDetailIndex);
+      g.computeVertexNormals();
+      mesh(g, M.roadDetail).name = 'route-detail';
+    }
+
     function roadStrip(points, width, mat) {
       var pp = [], uv = [];
       for (var i = 0; i < points.length - 1; i++) {
@@ -343,12 +421,15 @@
         addBridge(points,a,b,deck);
       });
       roadStrip(points,1.72,M.path).name='route-'+def.from+'-'+def.to;
+      roadDetail(points,1.72,2);
       // Narrow edge lanes visually connect the whole route even on steep hills.
       routes.push({from:def.from,to:def.to,width:1.72,points:points.map(function(p){return p.clone();}),bridges:spans.length});
     });
     // A broad approach joins the castle steps to the exploration road.
     var plaza=[];for(var i=0;i<=20;i++){var z=-10.5+i*.4;plaza.push(new T.Vector3(0,heightAt(0,z)+.09,z));}
     roadStrip(plaza,1.85,M.path);
+    roadDetail(plaza,1.85,2);
+    roadDetailMesh();
 
     function treeAt(x,z,snowy,scale) {
       if(coastField(x,z)<.15 || riverDistance(x,z)<4.2)return;

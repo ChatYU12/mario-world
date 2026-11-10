@@ -10,10 +10,28 @@
       shader.uniforms.uResidentTime=uniform;
       shader.vertexShader='uniform float uResidentTime;\nattribute vec2 residentMotion;\n'+shader.vertexShader;
       shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',
-        '#include <begin_vertex>\nfloat gait=uResidentTime*7.5+residentMotion.x;\nfloat walking=residentMotion.y;\ntransformed.x+=sin(gait)*0.025*max(position.y,0.0)*walking;\ntransformed.y+=abs(sin(gait))*0.035*walking;');
+        '#include <begin_vertex>\nfloat gait=residentMotion.x;\nfloat walking=residentMotion.y;\ntransformed.x+=sin(gait)*(0.017+0.008*walking)*max(position.y,0.0)*walking;\ntransformed.y+=abs(sin(gait))*(0.020+0.015*walking)*walking;\nfloat breath=sin(uResidentTime*0.85+residentMotion.x);\ntransformed.y+=breath*0.007*clamp(position.y/1.8,0.0,1.0)*(1.0-walking);');
     };
-    material.customProgramCacheKey=function(){return 'resident-patrol-v1';};
+    material.customProgramCacheKey=function(){return 'resident-patrol-natural-v2';};
     material.userData.residentTime=uniform;
+    function random(id,channel,count){var text=id+'|'+channel+'|'+(count||0),hash=2166136261;for(var i=0;i<text.length;i++){hash^=text.charCodeAt(i);hash=Math.imul(hash,16777619);}hash^=hash>>>16;hash=Math.imul(hash,0x7feb352d);hash^=hash>>>15;hash=Math.imul(hash,0x846ca68b);return ((hash^(hash>>>16))>>>0)/4294967296;}
+    function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);}
+    function integral(t){t=Math.max(0,Math.min(1,t));return t*t*t*(1-t*.5);}
+    function angle(a){return Math.atan2(Math.sin(a),Math.cos(a));}
+    function resetLeg(actor){actor.legStart=actor.distance;actor.elapsed=0;actor.legLength=null;}
+    function profile(actor,time){
+      var peak=actor.legPeak,duration=actor.duration;
+      if(time<.35)return{distance:peak*.35*integral(time/.35),speed:peak*smooth(time/.35)};
+      if(time>duration-.4)return{distance:actor.legLength-peak*.4*integral((duration-time)/.4),speed:peak*smooth((duration-time)/.4)};
+      return{distance:peak*(time-.175),speed:peak};
+    }
+    function turn(actor,delta){
+      var r=actor.record,a=r.path[actor.segment],b=r.path[actor.segment+r.direction],target=Math.atan2(b.x-a.x,b.z-a.z);
+      if(actor.turnTarget===null||Math.abs(angle(target-actor.turnTarget))>1e-6){actor.turnFrom=r.yaw;actor.turnTarget=r.yaw+angle(target-r.yaw);actor.turnElapsed=0;}
+      actor.turnElapsed=Math.min(r.turnDuration,actor.turnElapsed+delta);
+      var wanted=actor.turnFrom+(actor.turnTarget-actor.turnFrom)*smooth(actor.turnElapsed/r.turnDuration);
+      r.yaw+=Math.max(-.34,Math.min(.34,angle(wanted-r.yaw)));
+    }
     function segment(a,b,ignore){var count=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.z-b.z)/.18));for(var k=0;k<=count;k++){var t=k/count;if(!cfg.safe(a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t,ignore))return false;}return true;}
     function prepare(record,index){
       var home={x:record.x,z:record.z,yaw:record.yaw},start=null;
@@ -34,36 +52,63 @@
       if(path.length===2){var end=path.pop();path.push({x:(start.x+end.x)*.5,z:(start.z+end.z)*.5},end);}
       if(path.length<3)throw new Error('No safe patrol polyline for '+record.id);
       record.home=home;record.x=start.x;record.z=start.z;record.path=path;record.progress=0;record.direction=1;record.wait=0;
-      record.speed=Math.min(.85,.55+(index%7)*.05);record.pause=1.2+(index%5)*.3;record.current={x:start.x,z:start.z,y:cfg.heightAt(start.x,start.z)+.02};
+      record.peakSpeed=.55+.40*random(record.id,'speed');record.pauseDuration=1.2+3.3*random(record.id,'pause');
+      // Preserve legacy configuration fields; actual gait uses the richer parameters above.
+      record.speed=Math.min(.85,record.peakSpeed);record.pause=Math.min(2.4,record.pauseDuration);
+      record.startDelay=1.8*random(record.id,'start');record.wait=record.startDelay;record.stopDuration=record.startDelay;record.currentSpeed=0;
+      record.gaitPhase=Math.PI*2*random(record.id,'gait');record.turnDuration=(record.type===1||record.type===4)?.36+.04*random(record.id,'turn'):.25+.10*random(record.id,'turn');
+      record.roundTrips=0;record.restChecks=0;record.restCount=0;record.nextRestCycle=2+Math.floor(3*random(record.id,'restEvery'));record.temporaryRest=false;
+      record.current={x:start.x,z:start.z,y:cfg.heightAt(start.x,start.z)+.02};
       return record;
     }
     function add(mesh,records){
       var values=new Float32Array(records.length*2);mesh.geometry.setAttribute('residentMotion',new T.InstancedBufferAttribute(values,2));mesh.material=material;mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
-      records.forEach(function(record,index){var actor={mesh:mesh,index:index,record:record,segment:0,distance:0,phase:actors.length*.93,order:actors.length};actors.push(actor);values[index*2]=actor.phase;cfg.orient(dummy,record.x,record.z,cfg.heightAt(record.x,record.z)+.02,record.yaw);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
+      records.forEach(function(record,index){var actor={mesh:mesh,index:index,record:record,segment:0,distance:0,gaitPhase:record.gaitPhase,order:actors.length,turnTarget:null,turnFrom:record.yaw,turnElapsed:0};resetLeg(actor);actors.push(actor);values[index*2]=actor.gaitPhase;cfg.orient(dummy,record.x,record.z,cfg.heightAt(record.x,record.z)+.02,record.yaw);dummy.updateMatrix();mesh.setMatrixAt(index,dummy.matrix);});
       mesh.instanceMatrix.needsUpdate=true;
+    }
+    function arrive(actor){
+      var r=actor.record;actor.segment+=r.direction;actor.distance=0;resetLeg(actor);r.currentSpeed=0;
+      if(actor.segment===0||actor.segment===r.path.length-1){
+        r.direction*=-1;r.wait=1.2+3.3*random(r.id,'endpoint',r.roundTrips*2+(actor.segment===0?1:0));r.temporaryRest=false;
+        if(actor.segment===0){
+          r.roundTrips++;
+          if(r.roundTrips>=r.nextRestCycle){
+            r.restChecks++;
+            if(random(r.id,'restChance',r.restChecks)<.25){r.wait=2+4*random(r.id,'restLength',r.restChecks);r.temporaryRest=true;r.restCount++;}
+            r.nextRestCycle=r.roundTrips+2+Math.floor(3*random(r.id,'restEvery',r.restChecks));
+          }
+        }
+        r.stopDuration=r.wait;
+      }
     }
     function update(time,viewer){
       viewer=viewer||{};
       if(disposed||!viewer.animate||cfg.reducedMotion||viewer.reducedMotion||(typeof root.matchMedia==='function'&&root.matchMedia('(prefers-reduced-motion: reduce)').matches)){lastTime=Number.isFinite(time)?time:null;return false;}
       time=Number.isFinite(time)?time:0;var delta=lastTime===null?.1:Math.max(0,Math.min(.25,time-lastTime));lastTime=time;clock+=delta;uniform.value=clock;
       actors.forEach(function(actor){
-        var r=actor.record,remaining=delta,walking=false,saved={segment:actor.segment,distance:actor.distance,x:r.x,z:r.z,yaw:r.yaw,progress:r.progress,direction:r.direction,wait:r.wait};
+        var r=actor.record,remaining=delta,saved={segment:actor.segment,distance:actor.distance,legStart:actor.legStart,elapsed:actor.elapsed,legLength:actor.legLength,legPeak:actor.legPeak,duration:actor.duration,x:r.x,z:r.z,progress:r.progress,direction:r.direction,wait:r.wait,roundTrips:r.roundTrips,restChecks:r.restChecks,restCount:r.restCount,nextRestCycle:r.nextRestCycle,temporaryRest:r.temporaryRest,stopDuration:r.stopDuration};
+        r.currentSpeed=0;
         while(remaining>1e-8){
-          if(r.wait>0){var rest=Math.min(r.wait,remaining);r.wait-=rest;remaining-=rest;continue;}
-          var a=r.path[actor.segment],b=r.path[actor.segment+r.direction],length=Math.hypot(b.x-a.x,b.z-a.z),needed=(length-actor.distance)/r.speed,used=Math.min(remaining,needed);
-          actor.distance+=used*r.speed;remaining-=used;walking=used>0;
-          var t=Math.min(1,actor.distance/length);r.x=a.x+(b.x-a.x)*t;r.z=a.z+(b.z-a.z)*t;r.yaw=Math.atan2(b.x-a.x,b.z-a.z);r.progress=actor.segment+r.direction*t;
-          if(actor.distance>=length-1e-7){actor.segment+=r.direction;actor.distance=0;if(actor.segment===0||actor.segment===r.path.length-1){r.direction*=-1;r.wait=r.pause;walking=false;}}
+          if(r.wait>0){var rest=Math.min(r.wait,remaining);r.wait=Math.max(0,r.wait-rest);remaining-=rest;continue;}
+          var a=r.path[actor.segment],b=r.path[actor.segment+r.direction],length=Math.hypot(b.x-a.x,b.z-a.z);
+          if(actor.legLength===null){actor.legLength=Math.max(1e-8,length-actor.legStart);actor.legPeak=Math.min(r.peakSpeed,2*actor.legLength/.75);actor.duration=actor.legLength/actor.legPeak+.375;}
+          var used=Math.min(remaining,actor.duration-actor.elapsed);actor.elapsed+=used;remaining-=used;
+          var state=profile(actor,actor.elapsed);actor.distance=Math.min(length,actor.legStart+state.distance);r.currentSpeed=state.speed;
+          var t=actor.distance/length;r.x=a.x+(b.x-a.x)*t;r.z=a.z+(b.z-a.z)*t;r.progress=actor.segment+r.direction*t;
+          if(actor.elapsed>=actor.duration-1e-8)arrive(actor);
         }
         var blocker=actors.find(function(other){return other!==actor&&Math.hypot(r.x-other.record.x,r.z-other.record.z)<.60;});
         if(blocker){
-          actor.segment=saved.segment;actor.distance=saved.distance;r.x=saved.x;r.z=saved.z;r.yaw=saved.yaw;r.progress=saved.progress;r.direction=saved.direction;r.wait=saved.wait;walking=false;
-          // The later actor yields by retracing its own safe segment; no sideways teleport.
+          ['segment','distance','legStart','elapsed','legLength','legPeak','duration'].forEach(function(k){actor[k]=saved[k];});
+          r.x=saved.x;r.z=saved.z;r.progress=saved.progress;r.direction=saved.direction;r.wait=saved.wait;r.currentSpeed=0;['roundTrips','restChecks','restCount','nextRestCycle','temporaryRest','stopDuration'].forEach(function(k){r[k]=saved[k];});
           if(actor.order>blocker.order&&r.wait<=0&&actor.distance>.05){var from=r.path[actor.segment],to=r.path[actor.segment+r.direction];actor.distance=Math.hypot(to.x-from.x,to.z-from.z)-actor.distance;actor.segment+=r.direction;r.direction*=-1;r.wait=.35;}
+          resetLeg(actor);
         }
+        turn(actor,delta);
+        var travelled=Math.hypot(r.x-saved.x,r.z-saved.z);actor.gaitPhase+=travelled*10;r.gaitPhase=actor.gaitPhase;
         r.current.x=r.x;r.current.z=r.z;r.current.y=cfg.heightAt(r.x,r.z)+.02;
         cfg.orient(dummy,r.x,r.z,r.current.y,r.yaw);dummy.updateMatrix();actor.mesh.setMatrixAt(actor.index,dummy.matrix);
-        var attr=actor.mesh.geometry.attributes.residentMotion;attr.setY(actor.index,walking&&r.wait<=0?1:0);
+        var attr=actor.mesh.geometry.attributes.residentMotion;attr.setX(actor.index,actor.gaitPhase);attr.setY(actor.index,r.wait>0?0:r.currentSpeed/.95);
       });
       var touched=new Set();actors.forEach(function(a){touched.add(a.mesh);});touched.forEach(function(mesh){mesh.instanceMatrix.needsUpdate=true;mesh.geometry.attributes.residentMotion.needsUpdate=true;});
       return true;

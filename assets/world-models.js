@@ -421,21 +421,114 @@
       return g;
     }
 
+    // Tree parts share the existing palette and are baked by material before
+    // placement. The ranges identify real indexed components for CPU auditing.
+    function treeBatches(model) {
+      var bins = new Map(), parts = [];
+      model.updateMatrixWorld(true);
+      model.children.forEach(function (mesh) {
+        var bin = bins.get(mesh.material);
+        if (!bin) { bin = { p: [], n: [], uv: [], c: [], i: [] }; bins.set(mesh.material, bin); }
+        var g = mesh.geometry, p = g.attributes.position, n = g.attributes.normal;
+        var uv = g.attributes.uv, color = g.attributes.color, offset = bin.p.length / 3;
+        var normalMatrix = new T.Matrix3().getNormalMatrix(mesh.matrixWorld);
+        var v = new T.Vector3(), normal = new T.Vector3();
+        parts.push({ kind: mesh.name, batch: Array.from(bins.keys()).indexOf(mesh.material), start: bin.i.length, count: g.index.count });
+        for (var j = 0; j < p.count; j++) {
+          v.fromBufferAttribute(p, j).applyMatrix4(mesh.matrixWorld);
+          normal.fromBufferAttribute(n, j).applyNormalMatrix(normalMatrix);
+          bin.p.push(v.x, v.y, v.z); bin.n.push(normal.x, normal.y, normal.z);
+          bin.uv.push(uv.getX(j), uv.getY(j));
+          bin.c.push(color ? color.getX(j) : 1, color ? color.getY(j) : 1, color ? color.getZ(j) : 1);
+        }
+        for (var j = 0; j < g.index.count; j++) bin.i.push(offset + g.index.getX(j));
+      });
+      model.clear();
+      var index = 0;
+      bins.forEach(function (bin, mat) {
+        var g = geometry('tree-batch/' + model.name + '/' + index++, function () {
+          var result = new T.BufferGeometry();
+          result.setAttribute('position', new T.Float32BufferAttribute(bin.p, 3));
+          result.setAttribute('normal', new T.Float32BufferAttribute(bin.n, 3));
+          result.setAttribute('uv', new T.Float32BufferAttribute(bin.uv, 2));
+          result.setAttribute('color', new T.Uint16BufferAttribute(bin.c.map(function (v) { return Math.round(v * 65535); }), 3, true));
+          result.setIndex(bin.i); result.computeBoundingBox(); result.computeBoundingSphere();
+          return result;
+        });
+        add(model, g, mat).name = 'batched-tree-parts';
+      });
+      model.userData.treeParts = parts;
+      return model;
+    }
+
+    function treeBlade() {
+      return geometry('tree-leaf-blade', function () {
+        var g = new T.BufferGeometry();
+        g.setAttribute('position', new T.Float32BufferAttribute([0, 0, 0, .006, -.003, 0, 0, -.001, .004, .001, .001, .001], 3));
+        g.setAttribute('uv', new T.Float32BufferAttribute([0, 0, 1, 0, 0, 1, .5, .5], 2));
+        g.setIndex([0, 2, 1, 0, 1, 3, 1, 2, 3, 2, 0, 3]);
+        g.computeVertexNormals(); return g;
+      });
+    }
+
     function tree(snow) {
       var g = group(snow ? 'snow-tree' : 'round-tree');
-      cylinder(g, M.wood, 0, 0.037, 0, 0.008, 0.013, 0.074, 12);
-      rod(g, M.wood, [0, 0.049, 0], [-0.025, 0.085, 0.006], 0.004, 6);
-      rod(g, M.wood, [0, 0.055, 0], [0.026, 0.095, 0.004], 0.0038, 6);
-      ball(g, snow ? M.pale : M.leafShade, 0, 0.109, 0, 0.050, 0.042, 0.045, 16);
-      ball(g, snow ? M.white : M.forest, -0.022, 0.125, 0.010, 0.029, 0.033, 0.030, 16);
-      ball(g, snow ? M.white : M.green, 0.023, 0.126, 0.004, 0.030, 0.034, 0.032, 16);
-      ball(g, snow ? M.white : M.lime, 0, 0.151, -0.005, 0.034, 0.029, 0.035, 16);
-      if (!snow) {
-        [[-0.027, 0.131, 0.031], [0.025, 0.123, 0.034], [0.010, 0.151, 0.024]].forEach(function (p) {
-          ball(g, M.orange, p[0], p[1], p[2], 0.0038, 0.0045, 0.0038, 8);
+      for (var segment = 0; segment < 3; segment++) {
+        var trunk = cylinder(g, M.wood, segment * .0008, .012 + segment * .024, 0,
+          .011 - segment * .0025, .016 - segment * .0035, .024, snow ? 8 : 9);
+        trunk.name = 'trunk-segment';
+      }
+      if (snow) {
+        // Three vertical bands make the snow line follow the layered surface,
+        // leaving evergreen undersides visible without a separate snow mesh.
+        M.white.vertexColors = true;
+        for (var layer = 0; layer < 6; layer++) {
+          var radius = [.046, .042, .036, .030, .024, .017][layer];
+          var height = [.043, .042, .040, .037, .033, .026][layer];
+          var y = [.052, .073, .094, .115, .135, .151][layer];
+          var cone = geometry('snow-needle-layer/' + layer, function () {
+            var c = new T.ConeGeometry(radius, height, 23, 3), colors = [];
+            var p = c.attributes.position, n = c.attributes.normal;
+            for (var i = 0; i < p.count; i++) {
+              var t = (p.getY(i) / height + .5), snowy = n.getY(i) > 0 && t > .18;
+              var color = snowy ? new T.Color(0xfffdf4) : new T.Color(0x527961);
+              colors.push(color.r, color.g, color.b);
+            }
+            c.setAttribute('color', new T.Float32BufferAttribute(colors, 3)); return c;
+          });
+          var needles = add(g, cone, M.white, 0, y + height / 2, 0);
+          needles.rotation.y = layer * .37; needles.scale.z = .86; needles.name = 'needle-cone-layer';
+          for (var tooth = 0; tooth < 8; tooth++) {
+            var a = tooth * Math.PI / 4 + layer * .37;
+            var blade = add(g, treeBlade(), M.white, Math.cos(a) * radius, y + .001, Math.sin(a) * radius * .86);
+            blade.rotation.y = -a; blade.scale.z = .86; blade.name = 'serrated-needle-edge';
+          }
+        }
+        var tip = cylinder(g, M.wood, .0016, .174, 0, .0006, .0015, .016, 6);
+        tip.name = 'exposed-leader';
+      } else {
+        [[-.025, .085, .006], [.026, .095, .004], [.005, .103, -.023]].forEach(function (end) {
+          rod(g, M.wood, [0, .051, 0], end, .0035, 6).name = 'visible-side-branch';
+        });
+        var crown = [[0,.109,0,.050,.042,.045],[-.022,.125,.010,.029,.033,.030],
+          [.023,.126,.004,.030,.034,.032],[0,.151,-.005,.034,.029,.035],
+          [-.030,.110,-.008,.022,.024,.026],[.032,.115,-.008,.021,.025,.027],
+          [-.018,.151,.018,.020,.023,.021],[.019,.149,.020,.022,.024,.020]];
+        crown.forEach(function (p, index) {
+          var sphere = geometry('tree-crown-cluster', function () { return new T.SphereGeometry(1, 10, 7); });
+          var cluster = add(g, sphere, [M.leafShade, M.forest, M.green, M.lime][index % 4], p[0], p[1], p[2]);
+          cluster.scale.set(p[3], p[4], p[5]); cluster.name = 'crown-ball-cluster';
+        });
+        for (var leaf = 0; leaf < 4; leaf++) {
+          var a = leaf * Math.PI / 2 + .4;
+          var blade = add(g, treeBlade(), M.lime, Math.cos(a) * .044, .129 + (leaf % 2) * .019, Math.sin(a) * .037);
+          blade.scale.set(1.5, 1.5, 1.5); blade.rotation.y = -a; blade.name = 'silhouette-leaf-blade';
+        }
+        [[-.027,.131,.031],[.025,.123,.034],[.010,.151,.024]].forEach(function (p) {
+          ball(g, M.orange, p[0], p[1], p[2], .0038, .0045, .0038, 8).name = 'fruit';
         });
       }
-      return g;
+      return treeBatches(g);
     }
 
     function gableRoof(parent, mat, x, y, z, w, h, depth) {
@@ -580,38 +673,43 @@
 
     function palm() {
       var g = group('palm');
-      var trunk = geometry('palm-trunk', function () {
-        var c = new T.CatmullRomCurve3([
-          new T.Vector3(0, 0.008, 0), new T.Vector3(0.005, 0.070, 0), new T.Vector3(0.025, 0.145, 0)
-        ]);
-        return new T.TubeGeometry(c, 12, 0.007, 8, false);
-      });
-      add(g, trunk, M.wood);
-      var leafGeo = geometry('palm-frond', function () {
+      for (var segment = 0; segment < 6; segment++) {
+        var t = segment / 6, next = (segment + 1) / 6;
+        var start = new T.Vector3(.025 * t * t, .004 + t * .141, 0);
+        var end = new T.Vector3(.025 * next * next, .004 + next * .141, 0);
+        var delta = end.clone().sub(start);
+        var trunk = cylinder(g, M.wood, 0, 0, 0, .007 - t * .002, .009 - t * .002, delta.length(), 8);
+        trunk.position.copy(start).add(end).multiplyScalar(.5);
+        trunk.quaternion.setFromUnitVectors(Y, delta.normalize()); trunk.name = 'curved-trunk-segment';
+      }
+      var leafGeo = geometry('folded-palm-frond', function () {
         var positions = [], indices = [], uvs = [];
-        for (var j = 0; j <= 10; j++) {
-          var t = j / 10, w = Math.sin(t * Math.PI) * 0.015;
-          positions.push(t * 0.083, -0.042 * t * t, -w, t * 0.083, -0.042 * t * t, w);
-          uvs.push(t, 0, t, 1);
-          if (j < 10) {
-            var k = j * 2;
-            indices.push(k, k + 2, k + 1, k + 1, k + 2, k + 3);
+        // A raised midrib splits each of three segments into two lit facets.
+        // Nonzero end widths keep the indexed tip triangles nondegenerate.
+        for (var j = 0; j <= 3; j++) {
+          var t = j / 3, w = j === 0 || j === 3 ? .0007 : Math.sin(t * Math.PI) * .015;
+          var x = t * .083, y = -.042 * t * t;
+          positions.push(x,y,-w,x,y + Math.sin(t * Math.PI) * .004 + .0004,0,x,y,w);
+          uvs.push(t,0,t,.5,t,1);
+          if (j < 3) {
+            var k = j * 3;
+            indices.push(k,k+3,k+1,k+1,k+3,k+4,k+1,k+4,k+2,k+2,k+4,k+5);
           }
         }
         var geo = new T.BufferGeometry();
         geo.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
         geo.setAttribute('uv', new T.Float32BufferAttribute(uvs, 2));
-        geo.setIndex(indices); geo.computeVertexNormals();
-        return geo;
+        geo.setIndex(indices); geo.computeVertexNormals(); return geo;
       });
-      for (var i = 0; i < 7; i++) {
-        var leaf = add(g, leafGeo, material(i % 2 ? 0x42a961 : 0x89c75e, { side: T.DoubleSide }), 0.025, 0.15, 0);
-        leaf.rotation.y = i * Math.PI * 2 / 7;
+      for (var i = 0; i < 10; i++) {
+        var leaf = add(g, leafGeo, material(i % 2 ? 0x42a961 : 0x89c75e, { side: T.DoubleSide }), .025, .150, 0);
+        leaf.rotation.y = i * Math.PI / 5; leaf.name = 'folded-frond';
       }
-      [-1, 0, 1].forEach(function (s) {
-        ball(g, M.brown, 0.025 + s * 0.009, 0.139, 0.009, 0.007, 0.008, 0.007, 8);
-      });
-      return g;
+      for (var fruit = 0; fruit < 4; fruit++) {
+        var a = fruit * Math.PI / 2;
+        ball(g, M.brown, .025 + Math.cos(a) * .009, .139 - fruit % 2 * .003, Math.sin(a) * .009, .007, .008, .007, 8).name = 'coconut-cluster';
+      }
+      return treeBatches(g);
     }
 
     function pyramid() {
@@ -764,10 +862,10 @@
             var y = i * 0.025, x = 0.025 * Math.pow(y / 0.145, 1.8);
             cylinder(d, M.woodLight, x, y, 0, 0.0073, 0.0077, 0.002, 8);
           }
-          for (var i = 0; i < 7; i++) {
-            var a = i * Math.PI * 2 / 7;
+          for (var i = 0; i < 10; i++) {
+            var a = i * Math.PI / 5;
             rod(d, M.lime, [0.025, 0.151, 0],
-              [0.025 + Math.cos(a) * 0.058, 0.130, -Math.sin(a) * 0.058], 0.0008, 3);
+              [0.025 + Math.cos(a) * 0.0553, 0.135, -Math.sin(a) * 0.0553], 0.0008, 3);
           }
           break;
         case 'desert-pyramid':
@@ -837,8 +935,10 @@
       model.userData.refinement = features;
     }
 
+    var disposed = false;
     function authored(builder, width, height) {
       return function (variant) {
+        if (disposed) throw new Error('MarioWorldModels kit is disposed.');
         var model = builder(variant);
         refine(model);
         var bounds = new T.Box3().setFromObject(model);
@@ -852,11 +952,12 @@
         result.userData.dimensions = { width: actual.x, height: actual.y, depth: actual.z };
         result.userData.authorship = 'self-authored procedural geometry';
         result.userData.refinement = model.userData.refinement.slice();
+        if (model.userData.treeParts) result.userData.treeParts = model.userData.treeParts;
         return result;
       };
     }
 
-    return {
+    var kit = {
       castle: authored(castle, 0.42, 0.52),
       mushroomHouse: authored(mushroomHouse, 0.13, 0.16),
       pipe: authored(pipe, 0.08, 0.13),
@@ -870,5 +971,14 @@
       workshop: authored(workshop, 0.20, 0.19),
       harbor: authored(harbor, 0.24, 0.16)
     };
+    // Non-enumerable so existing callers that enumerate model builders retain
+    // the same twelve-entry API. Shared parts must be disposed with the kit.
+    Object.defineProperty(kit, 'dispose', { value: function () {
+      if (disposed) return;
+      disposed = true;
+      Object.keys(geometries).forEach(function (key) { geometries[key].dispose(); delete geometries[key]; });
+      Object.keys(materials).forEach(function (key) { materials[key].dispose(); delete materials[key]; });
+    } });
+    return kit;
   }
 })(window);
