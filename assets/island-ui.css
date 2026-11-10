@@ -23,3 +23,10 @@ html[data-world-mode="map"] .island-plate{display:flex}
    saturation and contrast on the map canvas only. The globe keeps its own
    softer grade, and the filter is a single compositor pass. */
 html[data-world-mode="map"] #stage{filter:saturate(1.14) contrast(1.07)}
+
+/* The world-space pins are positioned from projected coordinates and may sit a few
+   pixels past the right edge on narrow screens, which used to widen the document and
+   add a horizontal scrollbar. Clipping the pin layer keeps the labels visible where
+   they belong and the page exactly one viewport wide. */
+.world-pins{overflow:clip}
+html{overflow-x:clip}

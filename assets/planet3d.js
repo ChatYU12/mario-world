@@ -17,9 +17,11 @@
    * ISO.margin padding per side, so the ground rectangle fills 1-2*margin = 82% of the
    * binding viewport axis (height on landscape, width on portrait). Terrain and building
    * relief then reaches ~87% of that axis, which leaves the padding the margin promises
-   * without ever clipping the silhouette. Zoom is three fixed framings, never a dolly.
+   * without ever clipping the silhouette. Zoom is continuous from the whole island to a
+   * single building; ISO.zooms only names the three framings the +/-, wheel and pinch
+   * controls snap to on a key press, it is not a limit on how close the camera may go.
    */
-  var ISO={azimuth:45,elevation:35.264,distance:240,margin:.05,zooms:[1,1.45,2.1],
+  var ISO={azimuth:45,elevation:35.264,distance:240,margin:.05,zooms:[1,1.45,2.1],zoomMax:6,
     regionDistance:42,closeDistance:30,nearSlack:60,farSlack:260,
     fogNearOffset:-15,fogFarOffset:190};
   var ISO_RAD=Math.PI/180;
@@ -65,11 +67,21 @@
     var top=Math.max(ISO.regionDistance+1,isFinite(whole)?whole:ISO.regionDistance*4);
     return [[top,ISO.zooms[0]],[ISO.regionDistance,ISO.zooms[1]],[ISO.closeDistance,ISO.zooms[2]]];
   }
+  /* The close-up tier is not the end of the story: beyond it the distance keeps
+     falling along the same log-log slope, so a user can push in until one building
+     fills the frame. The slope is taken from the last two control points so the
+     mapping stays a single continuous function instead of a clamped table. */
+  function isoZoomSlope() {
+    return (Math.log(ISO.closeDistance)-Math.log(ISO.regionDistance))/(Math.log(ISO.zooms[2])-Math.log(ISO.zooms[1]));
+  }
   function zoomForDistance(distance, whole) {
     var anchors=isoAnchors(whole),d=isFinite(distance)?Math.max(.01,distance):anchors[0][0];
     var i,a,b,t;
     if(d>=anchors[0][0])return anchors[0][1];
-    if(d<=anchors[2][0])return anchors[2][1];
+    if(d<=anchors[2][0]){
+      var deeper=Math.exp(Math.log(anchors[2][1])+(Math.log(d)-Math.log(anchors[2][0]))/isoZoomSlope());
+      return Math.min(ISO.zoomMax,Math.max(anchors[2][1],deeper));
+    }
     for(i=0;i<2;i++){
       a=anchors[i];b=anchors[i+1];
       if(d<=a[0]&&d>=b[0]){t=(Math.log(d)-Math.log(a[0]))/(Math.log(b[0])-Math.log(a[0]));return a[1]+(b[1]-a[1])*t;}
@@ -80,7 +92,10 @@
     var anchors=isoAnchors(whole),z=isFinite(zoom)?zoom:1;
     var i,a,b,t;
     if(z<=anchors[0][1])return anchors[0][0];
-    if(z>=anchors[2][1])return anchors[2][0];
+    if(z>=anchors[2][1]){
+      var capped=Math.min(ISO.zoomMax,Math.max(anchors[2][1],z));
+      return Math.exp(Math.log(anchors[2][0])+isoZoomSlope()*(Math.log(capped)-Math.log(anchors[2][1])));
+    }
     for(i=0;i<2;i++){
       a=anchors[i];b=anchors[i+1];
       if(z>=a[1]&&z<=b[1]){t=(Math.log(z)-Math.log(a[1]))/(Math.log(b[1])-Math.log(a[1]));return Math.exp(Math.log(a[0])+(Math.log(b[0])-Math.log(a[0]))*t);}
@@ -228,12 +243,23 @@
       isoView.height=halfHeight*2;isoView.width=halfWidth*2;isoView.near=iso.near;isoView.far=iso.far;
       return isoView;
     }
-    /* Discrete tiers: wheel, +/- and pinch only ever step between the three framings,
-       so the isometric composition cannot end up on an odd angle or an in-between
-       zoom. (Returning false at the ends keeps the caller from re-rendering.) */
+    /* Continuous zoom. The factor is applied to the current zoom and the result is
+       clamped between the whole-island framing and ISO.zoomMax, so pinching or rolling
+       glides instead of jumping, and no amount of input can push the eye through the
+       terrain: the orthographic eye stays ISO.distance from its target at every level.
+       Returning false at the ends keeps the caller from re-rendering for nothing. */
+    function zoomIso(factor){
+      var whole=isoWholeDistance(),level=zoomForDistance(state.mapTargetDistance,whole);
+      var next=THREE.MathUtils.clamp(level*(isFinite(factor)&&factor>0?factor:1),ISO.zooms[0],ISO.zoomMax);
+      if(Math.abs(next-level)<1e-4)return false;
+      state.mapTargetDistance=distanceForZoom(next,whole);
+      return true;
+    }
+    /* Discrete step, kept for the keyboard shortcuts and the accessibility buttons:
+       the wheel and pinch use zoomIso so they feel like a camera, not a slide deck. */
     function stepIsoZoom(closer){
       var whole=isoWholeDistance(),level=zoomForDistance(state.mapTargetDistance,whole);
-      var next=null,i,value,list=ISO.zooms;
+      var next=null,i,value,list=ISO.zooms.concat([ISO.zoomMax]);
       for(i=0;i<list.length;i++){
         value=list[i];
         if(closer?value>level+.001:value<level-.001){if(next===null||(closer?value<next:value>next))next=value;}
@@ -484,7 +510,7 @@
           var ps=Array.from(pointerPoints.values()),d=Math.hypot(ps[0].x-ps[1].x,ps[0].y-ps[1].y);
           if(d>0&&pinchDistance>0){
             var pinch=d/pinchDistance;
-            if(pinch>1.3||pinch<1/1.3){stepIsoZoom(pinch>1);pinchDistance=d;}
+            if(Math.abs(pinch-1)>.01){zoomIso(pinch);pinchDistance=d;}
           }else pinchDistance=d;
         }else if(state.mode==='overview'){
           state.yaw-=dx*.006;state.pitch=T.MathUtils.clamp(state.pitch+dy*.006,-1.1,1.1);
@@ -515,7 +541,7 @@
     }
     listen(canvas,'pointerup',function(e){release(e,false);});listen(canvas,'pointercancel',function(e){release(e,true);});
     listen(canvas,'wheel',function(e){
-      if(isIsoMode()){e.preventDefault();stepIsoZoom(e.deltaY<0);}
+      if(isIsoMode()){e.preventDefault();zoomIso(Math.exp(-e.deltaY*.0016));}
       else if(opts.zoom&&state.mode==='overview'){e.preventDefault();state.targetDistance=T.MathUtils.clamp(state.targetDistance+e.deltaY*.002,3.6,6.5);}
     },{passive:false});
     canvas.tabIndex=0;
@@ -526,8 +552,8 @@
         var step=state.mapTargetDistance*.065;
         if(e.key==='ArrowLeft')state.mapDesired.x-=step;if(e.key==='ArrowRight')state.mapDesired.x+=step;
         if(e.key==='ArrowUp')state.mapDesired.z-=step;if(e.key==='ArrowDown')state.mapDesired.z+=step;
-        if(e.key==='+'||e.key==='=')stepIsoZoom(true);
-        if(e.key==='-')stepIsoZoom(false);
+        if(e.key==='+'||e.key==='=')zoomIso(1.35);
+        if(e.key==='-')zoomIso(1/1.35);
         if(e.key==='Home')mapOverview();else clampMap();
       }else{if(e.key==='ArrowLeft')state.yaw+=.10;if(e.key==='ArrowRight')state.yaw-=.10;if(e.key==='ArrowUp')state.pitch-=.10;if(e.key==='ArrowDown')state.pitch+=.10;}
     });
@@ -658,6 +684,9 @@
       var activeRoot=mapGroup.visible?mapGroup:globe,projection=mapGroup.visible?(viewHeight*pixelRatio/Math.max(.001,isoView.height)):(viewHeight*pixelRatio/(2*Math.tan(camera.fov*Math.PI/360)*Math.max(.5,state.distance-1.15)));if(cameraChanged){lodHidden=0;activeRoot.traverse(function(o){if(o.userData.smallDetail){o.visible=quality==='detail'||o.userData.partRadius*projection>=(active?2.0:.65);if(!o.visible)lodHidden++;}});}
       if(cameraChanged||extraAnimation)activeRoot.updateMatrixWorld(true);if(cameraChanged)activeCamera().updateMatrixWorld(true);
       if(groundScatter)groundScatter.update(timestamp/1000,{animate:animateWater&&!reduced,active:active||cameraChanged});
+      // The sakura petals live in a vertex uniform, so the layer only asks for a
+      // frame while weather animation is on; a still, dry scene keeps it frozen.
+      if(islandLandmarks&&islandLandmarks.update(timestamp/1000,{animate:animateWater&&!reduced}))extraAnimation=true;
       if(story)story.tick(animateWater?animationTime:0);if(map)map.tick(animateWater?animationTime:0);
       if(cameraChanged)pins();var drawStart=performance.now();try{renderer.render(scene,activeCamera());}catch(error){if(opts.onFatalError){opts.onFatalError(error);return;}throw error;}drawMS=performance.now()-drawStart;frames++;
       if(renderer.shadowMap)renderer.shadowMap.needsUpdate=false;

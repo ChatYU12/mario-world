@@ -116,6 +116,9 @@
   var WATER_LIGHT = [0.72, 0.88, 0.93];
   var FOAM = [1.0, 0.98, 0.94];
   var GREEN = [0.42, 0.61, 0.36];
+  // Falling sakura petals: paler than the canopy so they read against it.
+  var PETAL_A = [1.0, 0.87, 0.90];
+  var PETAL_B = [1.0, 0.95, 0.96];
   var DARK = [0.27, 0.23, 0.21];
 
   /* ----------------------------------------------------------------- Builder
@@ -295,6 +298,15 @@
     b.umbrella(0.14, 1.98, -0.09, 1.08, 0.42, 6, 0.55, CROWN_MID, CROWN_MID);
     b.umbrella(-0.11, 2.26, 0.11, 0.84, 0.38, 6, 1.15, CROWN_HIGH, CROWN_HIGH);
     b.umbrella(0.05, 2.50, -0.05, 0.58, 0.34, 6, 1.75, CROWN_TOP, CROWN_TOP);
+    return b.geometry(T);
+  }
+
+  // One small quad = 2 triangles, centred on its own origin so the vertex pass
+  // can push it down and sideways without moving the instance anchor. A pair of
+  // triangles is the cheapest thing that still reads as a petal at this scale.
+  function petalGeometry(T) {
+    var b = new Builder();
+    b.face([[-0.15, 0, -0.05], [0.15, 0, -0.05], [0.15, 0.02, 0.07], [-0.15, 0.02, 0.07]], PETAL_A, [0, 1, 0]);
     return b.geometry(T);
   }
 
@@ -490,9 +502,9 @@
 
     /* ------------------------------------------------------------ counts ---- */
     var counts = {
-      smooth: { cherries: 20, lamps: 20, signs: 10 },
-      auto: { cherries: 25, lamps: 26, signs: 14 },
-      detail: { cherries: 28, lamps: 30, signs: 18 }
+      smooth: { cherries: 30, lamps: 26, signs: 12 },
+      auto: { cherries: 40, lamps: 34, signs: 16 },
+      detail: { cherries: 46, lamps: 38, signs: 20 }
     }[quality];
 
     /* -------------------------------------------------- 1. entrance gate ---- */
@@ -960,14 +972,89 @@
         var pp2 = f.at(poolFoam[pf][0], poolFoam[pf][1], poolFoam[pf][2]);
         staticBuilder.box(pp2[0], pp2[1], pp2[2], 0.5, 0.22, 0.42, FOAM, site.yaw + pf * 0.7);
       }
-      // Pool sheet and two boulders framing the spill.
+      // A slimmer inner sheet sits a few centimetres in front of the main one, so
+      // the fall reads as moving water with a bright core instead of one flat card.
+      for (var inner = 0; inner < levels; inner++) {
+        var i0 = inner / levels, i1 = (inner + 1) / levels;
+        var iy0 = drop * (1 - i0), iy1 = drop * (1 - i1) - 0.04;
+        var iz0 = -0.88 + i0 * 1.86, iz1 = -0.88 + i1 * 1.86;
+        var iw0 = half * 0.62 * (1 - i0 * 0.12), iw1 = half * 0.62 * (1 - i1 * 0.12);
+        staticBuilder.face([
+          f.at(-iw0, iy0, iz0), f.at(iw0, iy0, iz0), f.at(iw1, iy1, iz1), f.at(-iw1, iy1, iz1)
+        ], PETAL_B, [0, 0.4, 1]);
+      }
+      // Extra spray at the toe of the fall.
+      var spray = [[-0.32, 0.14, 1.18], [0.42, 0.11, 1.05], [0.02, 0.16, 1.34]];
+      for (var sp = 0; sp < spray.length; sp++) {
+        var spp = f.at(spray[sp][0], spray[sp][1], spray[sp][2]);
+        staticBuilder.box(spp[0], spp[1], spp[2], 0.34, 0.16, 0.3, FOAM, site.yaw + sp * 0.9);
+      }
+      // Pool sheet, a pale rim of shallows and two boulders framing the spill.
       var pool = f.at(0, 0.02, 1.2);
       staticBuilder.box(pool[0], pool[1], pool[2], 2.5, 0.06, 1.7, WATER_LIGHT, site.yaw);
+      var rim = f.at(0, 0.015, 1.24);
+      staticBuilder.box(rim[0], rim[1], rim[2], 3.05, 0.045, 2.15, WATER_LIGHT, site.yaw);
       var rockL = f.at(-1.18, 0.24, 0.2), rockR = f.at(1.22, 0.2, 0.35);
       staticBuilder.box(rockL[0], rockL[1], rockL[2], 0.62, 0.48, 0.56, STONE_DARK, site.yaw + 0.5);
       staticBuilder.box(rockR[0], rockR[1], rockR[2], 0.54, 0.42, 0.5, STONE, site.yaw + 1.1);
     }
     for (var fs = 0; fs < fallSites.length; fs++) buildFall(fallSites[fs]);
+
+    /* 3b. mine rail: a short working line running out of the red-rock mine along
+     * the nearest road. Sleepers and two rails are baked into the static batch, so
+     * the whole line costs zero extra draw calls. Each sleeper is placed from the
+     * measured ground height, which keeps the line on the surface without editing
+     * the terrain; the run stops as soon as the ground drops to the waterline. */
+    var railMetres = 0;
+    function buildMineRail() {
+      var mine = findRegion('canyon', 0);
+      if (!mine || !routeNodes.length) return;
+      var best = null, bestGap = Infinity;
+      for (var r = 0; r < routeNodes.length; r++) {
+        var route = routeNodes[r];
+        for (var scan = 0; scan <= route.length; scan += 3) {
+          var probe = sampleRoute(route, scan);
+          var gap = Math.hypot(probe.x - mine.x, probe.z - mine.z);
+          if (gap < bestGap) { bestGap = gap; best = { route: route, at: scan }; }
+        }
+      }
+      if (!best || bestGap > 34) return;
+      // The mine sits close to the coast, so a line walked only in one direction can
+      // run straight into the sea after a few metres. Both directions are measured
+      // first and the longer run is laid, which is also how a real spur would be sited.
+      function walkSpur(direction) {
+        var pieces = [], metres = 0, cursor = best.at;
+        for (var step = 0; step < 74; step++) {
+          cursor = best.at + direction * step * 0.9;
+          if (cursor < 0 || cursor > best.route.length - 1) break;
+          var sample = sampleRoute(best.route, cursor);
+          var ground = groundHeight(sample.x, sample.z);
+          if (!(ground > seaLevel + 0.58)) break;
+          pieces.push({ x: sample.x, z: sample.z, y: ground, yaw: Math.atan2(sample.tangent.x, sample.tangent.z) });
+          metres = Math.abs(cursor - best.at);
+        }
+        return { pieces: pieces, metres: metres };
+      }
+      var forward = walkSpur(1), backward = walkSpur(-1);
+      var run = forward.metres >= backward.metres ? forward : backward;
+      if (run.pieces.length < 6) return;
+      for (var rp = 0; rp < run.pieces.length; rp++) {
+        var piece = run.pieces[rp];
+        // Sleepers every 0.9 m, rails in 1.8 m segments so the curve stays smooth.
+        staticBuilder.box(piece.x, piece.y + 0.10, piece.z, 0.92, 0.11, 0.30, WOOD_DARK, piece.yaw);
+        if (rp % 2 === 0) {
+          var railFrame = frameAt(piece.x, piece.y + 0.17, piece.z, piece.yaw);
+          for (var side = -1; side <= 1; side += 2) {
+            var railAt = railFrame.at(side * 0.34, 0, 0.55);
+            staticBuilder.box(railAt[0], railAt[1], railAt[2], 0.09, 0.10, 1.85, IRON, piece.yaw);
+          }
+        }
+        if (rp % 7 === 0) record('rail', piece.x, piece.z);
+      }
+      railMetres = run.metres;
+      record('rail', mine.x, mine.z);
+    }
+    buildMineRail();
 
     /* 4. small props: stone lantern, barrel, bench. */
     function buildLantern(prop) {
@@ -1027,9 +1114,9 @@
       triangles += geometry.index.count / 3;
     }
 
-    function addInstanced(name, family, geometry, sites, colorFor) {
+    function addInstanced(name, family, geometry, sites, colorFor, surface) {
       if (!sites.length) { geometry.dispose(); return null; }
-      var mesh = new T.InstancedMesh(geometry, material, sites.length);
+      var mesh = new T.InstancedMesh(geometry, surface || material, sites.length);
       mesh.name = name;
       mesh.userData.family = family;
       mesh.userData.islandLandmark = true;
@@ -1079,6 +1166,60 @@
       return [0.96 + tone * 0.04, 0.96 + tone * 0.04, 0.94 + tone * 0.05];
     });
 
+    /* ------------------------------------------------------ sakura petals --- */
+    // Fallen petals drift through the vertex stage: the instance matrix anchors
+    // each flake at canopy height and one uniform drives the whole layer, so the
+    // CPU never touches an instance buffer per frame. animate:false or
+    // reducedMotion leaves uTime untouched, which makes the layer exactly static.
+    var petalUniforms = { uTime: { value: 0 } };
+    var petalMaterial = new T.MeshLambertMaterial({ name: 'island-petals', vertexColors: true, side: T.DoubleSide });
+    petalMaterial.onBeforeCompile = function (shader) {
+      shader.uniforms.uTime = petalUniforms.uTime;
+      shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', [
+        '#include <begin_vertex>',
+        '#ifdef USE_INSTANCING',
+        '  float petalSeed = fract(sin(instanceMatrix[3].x * 12.9898 + instanceMatrix[3].z * 78.233) * 43758.5453);',
+        '  float petalFall = fract(uTime * 0.075 + petalSeed);',
+        '  transformed.y -= petalFall * 3.6;',
+        '  transformed.x += sin(uTime * 0.9 + petalSeed * 6.283) * (0.18 + petalFall * 0.5);',
+        '  transformed.z += cos(uTime * 0.7 + petalSeed * 4.7) * (0.14 + petalFall * 0.4);',
+        '  transformed.y += sin(uTime * 1.8 + petalSeed * 9.0) * 0.06;',
+        '#endif'
+      ].join('\n'));
+    };
+    petalMaterial.customProgramCacheKey = function () { return 'island-petals-v1'; };
+    // Anchors sit 5 m over the canopy and fall at most 3.6 m, so a petal is always
+    // at least 1.4 m above the ground it hangs over; nothing can sink into terrain.
+    var petalSites = [];
+    for (var pc = 0; pc < cherrySites.length; pc++) {
+      var petalTree = cherrySites[pc];
+      for (var pk = 0; pk < 5; pk++) {
+        var pIdx = pc * 5 + pk;
+        var pAng = hash01(pIdx * 3.7, pIdx * 1.9, seed) * TAU;
+        var pRad = 0.7 + hash01(pIdx * 5.1, pIdx * 2.3, seed ^ 0x9e37) * 1.8;
+        petalSites.push({
+          x: petalTree.x + Math.cos(pAng) * pRad,
+          y: petalTree.y + 5.0,
+          z: petalTree.z + Math.sin(pAng) * pRad,
+          yaw: pAng,
+          scale: 0.85 + hash01(pIdx, pIdx * 7, seed) * 0.5
+        });
+      }
+    }
+    if (plazaRegion) {
+      for (var pp3 = 0; pp3 < 28; pp3++) {
+        var pAng2 = hash01(pp3 * 4.3, pp3, seed ^ 0x51) * TAU;
+        var pRad2 = 6.5 + hash01(pp3 * 2.7, pp3 * 6.1, seed) * 4.5;
+        var px2 = plazaRegion.x + Math.cos(pAng2) * pRad2, pz2 = plazaRegion.z + Math.sin(pAng2) * pRad2;
+        petalSites.push({ x: px2, y: groundHeight(px2, pz2) + 5.0, z: pz2, yaw: pAng2, scale: 0.9 + hash01(pp3, pp3 * 3, seed) * 0.3 });
+      }
+    }
+    var petalMesh = addInstanced('island-petals', 'petal', petalGeometry(T), petalSites, function (site, index) {
+      var tone = hash01(index * 2.3, index * 5.7, 41);
+      return [1.0, 0.86 + tone * 0.1, 0.9 + tone * 0.08];
+    }, petalMaterial);
+
     addInstanced('island-signs', 'sign', signGeometry(T), signSites, function (site, index) {
       var tone = hash01(Math.floor(site.x * 3), Math.floor(site.z * 3), 31);
       return [0.97 + tone * 0.03, 0.97 + tone * 0.03, 0.97 + tone * 0.03];
@@ -1116,6 +1257,8 @@
       lamps: lampSites.length,
       signs: signSites.length,
       props: props.length,
+      petals: petalSites.length,
+      rails: Math.round(railMetres),
       triangles: Math.round(triangles),
       drawCalls: meshes.length,
       geometryBytes: totalBytes,
@@ -1136,8 +1279,15 @@
       if (disposed) return false;
       var options = settings || {};
       if (options.animate === false || reducedMotion) return false;
-      if (typeof time === 'number' && isFinite(time)) clock = time;
-      return false;
+      // A missing or non-finite clock means "no time passed this frame", so the layer
+      // stays put and does not ask the host for a redraw.
+      if (typeof time !== 'number' || !isFinite(time)) return false;
+      clock = time;
+      // Only the petal layer is animated, and only through one uniform; the static
+      // batch and the three instanced prop layers never need a redraw.
+      if (!petalMesh) return false;
+      petalUniforms.uTime.value = clock;
+      return true;
     }
 
     /* -------------------------------------------------------------- dispose - */
@@ -1156,6 +1306,7 @@
       }
       for (var g2 = 0; g2 < uniqueGeometries.length; g2++) uniqueGeometries[g2].dispose();
       material.dispose();
+      petalMaterial.dispose();
       group.clear();
       meshes.length = 0;
       uniqueGeometries.length = 0;
