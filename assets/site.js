@@ -213,7 +213,10 @@
   }
   if (canvas) {
     canvas.addEventListener('pointerdown', dismissHint, { once: true });
-    requestAnimationFrame(function () { requestAnimationFrame(start); });
+    var worldReady = window.MarioWorldLoader ? window.MarioWorldLoader.load() : Promise.resolve();
+    worldReady.then(function () {
+      requestAnimationFrame(function () { requestAnimationFrame(function () { start(); }); });
+    }, fallback);
   }
   if (isExplore) window.addEventListener('hashchange', function () {
     var id=location.hash.slice(1);

@@ -41,3 +41,24 @@ html[data-world-mode="map"] .island-tools{display:flex}
 .island-tools button:hover{background:#fff}
 .island-tools button:focus-visible{outline:2px solid #2f6f8c;outline-offset:2px}
 @media (max-width:640px){.island-tools{right:12px;bottom:122px}.island-tools button{padding:7px 11px;font-size:11px}}
+
+/* Tablets and phones (≤999px). The mainland used to sit in a short box with an
+   empty band beneath it, the half-turn button was stranded in that band, the
+   quality select covered the map toolbar and the plate, the weather card and the
+   half-turn button stacked on top of one another. Now the map fills the screen
+   below the header (as it already did on phones); the left column holds
+   小镇导览 with the decorative plate above it, the right column quality → weather
+   → half-turn. */
+@media (max-width:999px){
+  .explore-main.is-map{display:block;height:calc(100svh - var(--header-h,48px));min-height:0;padding:0}
+  .explore-main.is-map>.exhibit{position:relative;inset:auto;width:100%;height:calc(100svh - var(--header-h,48px));
+    min-height:400px;max-height:none;margin:0;border-radius:0}
+  .explore-main.is-map .world-quality{top:auto;right:12px;bottom:18px}
+  .explore-main.is-map .world-environment-controls{top:auto;right:12px;bottom:66px}
+  .island-plate{right:auto;left:12px;bottom:78px}
+  .island-tools{right:12px;bottom:122px}
+}
+@media (max-width:560px){
+  .island-plate{left:10px;bottom:62px}
+  .island-tools{right:10px;bottom:116px}
+}

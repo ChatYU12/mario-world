@@ -97,7 +97,7 @@ kit.dispose();                // only after all objects from this kit are no lon
 
 ## Geist 字体与首页设计指南
 
-首页使用 Vercel 官方 Geist 可变字体，原始字体未经修改，中文缺字由系统中文字体回退。首页样式以 data URI 内嵌同一份官方字体，确保双击 HTML 的 file:// 场景不触发字体 CORS；原始 WOFF2 和完整许可也随站点离线提供，不向第三方字体服务发起请求。
+首页使用 Vercel 官方 Geist 可变字体，原始字体未经修改，中文缺字由系统中文字体回退。首页样式通过相对路径引用随站点提供的原始 WOFF2（`assets/Geist-Variable.woff2`），不再以 data URI 内嵌，样式表因此从约 119 KB 降到约 26 KB，字体可单独缓存；双击 HTML 的 file:// 场景经 Chrome 验证仍能正常加载。完整许可随站点离线提供，不向第三方字体服务发起请求。
 
 - 官方仓库：[vercel/geist-font](https://github.com/vercel/geist-font)
 - 固定来源 commit：`003bc04f134716b5c75613961fa05ad9f4d7023a`

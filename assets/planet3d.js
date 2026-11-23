@@ -243,8 +243,14 @@
       // near/far are only depth planes: they must contain the island for any pan and
       // stay generous enough that the environment's sky dome (0.8×far, capped at 420)
       // still encloses tall portrait frustums.
-      iso.near=Math.max(.05,ISO.distance-base.depth-ISO.nearSlack);
-      iso.far=ISO.distance+base.depth+ISO.farSlack;
+      // On tall portrait screens the sea at the bottom edge of the frame lies nearer
+      // than the island's own depth range (ground depth changes by h·cot(elevation)
+      // per unit of screen height), so it was clipped to bare background. Extend the
+      // planes to whatever the ground plane needs at the frame edges; an orthographic
+      // projection accepts a negative near plane.
+      var groundSpan=halfHeight/Math.tan(ISO.elevation*Math.PI/180)+ISO.margin*halfHeight;
+      iso.near=Math.min(Math.max(.05,ISO.distance-base.depth-ISO.nearSlack),ISO.distance-groundSpan-10);
+      iso.far=Math.max(ISO.distance+base.depth+ISO.farSlack,ISO.distance+groundSpan+10);
       iso.updateProjectionMatrix();iso.updateMatrixWorld(true);
       isoView.zoom=zoom;isoView.halfHeight=halfHeight;isoView.halfWidth=halfWidth;
       isoView.height=halfHeight*2;isoView.width=halfWidth*2;isoView.near=iso.near;isoView.far=iso.far;
@@ -696,6 +702,7 @@
     function pins(){
       if(!pinHost)return;pinsUpdates++;
       var rect={width:viewWidth,height:viewHeight},isMap=state.mode==='map'||state.mode==='focus';
+      var shownPins=[];
       orbitRegions.forEach(function(r){
         var button=labels[r.id];if(!button)return;
         var pos;
@@ -714,8 +721,29 @@
         if(button.hidden===show)button.hidden=!show;button.style.opacity=show?String(state.fade):'0';button.style.pointerEvents=show?'auto':'none';
         button.style.transform='translate('+((screen.x*.5+.5)*rect.width).toFixed(1)+'px,'+((-screen.y*.5+.5)*rect.height).toFixed(1)+'px) translate(-50%,-50%)';
         button.classList.toggle('is-active',state.region===r.id);
+        if(show)shownPins.push({button:button,x:sx,y:sy,rank:PIN_PRIORITY.indexOf(r.id)});
       });
+      collapseOverlappingPins(shownPins);
       residentLabels.forEach(function(label){var p=(label.npc?label.npc.position:label.place.position).clone();p.y+=1.65;var screen=p.project(activeCamera()),show=isMap&&!state.activePlace&&state.mapDistance<90&&Math.abs(screen.x)<.92&&Math.abs(screen.y)<.85&&screen.z<1;label.button.hidden=!show;if(show)label.button.style.transform='translate('+((screen.x*.5+.5)*rect.width).toFixed(1)+'px,'+((-screen.y*.5+.5)*rect.height).toFixed(1)+'px) translate(-50%,-100%)';});
+    }
+    /* On small screens ten region labels collide (e.g. 业务自动化 hidden under
+       沙漠与绿洲). Visible labels are placed in priority order: the three capability
+       entrances first, then the rest. A label that would overlap one already placed
+       collapses to its coloured dot (still a button with its full aria-label) and
+       expands again as soon as there is room. Sizes are measured once per label. */
+    var PIN_PRIORITY=['collaboration','automation','connection'];
+    function collapseOverlappingPins(list){
+      list.sort(function(a,b){return (a.rank<0?99:a.rank)-(b.rank<0?99:b.rank);});
+      var placed=[];
+      list.forEach(function(item){
+        var b=item.button,compact=b.classList.contains('is-compact');
+        if(!b._pinSize||!b._pinSize.w){if(compact)b.classList.remove('is-compact');b._pinSize={w:b.offsetWidth,h:b.offsetHeight};if(compact)b.classList.add('is-compact');}
+        var w=b._pinSize.w+4,h=b._pinSize.h+2,box={l:item.x-w/2,r:item.x+w/2,t:item.y-h/2,b:item.y+h/2};
+        var hit=placed.some(function(o){return box.l<o.r&&box.r>o.l&&box.t<o.b&&box.b>o.t;});
+        if(hit!==compact)b.classList.toggle('is-compact',hit);
+        if(hit)box={l:item.x-8,r:item.x+8,t:item.y-8,b:item.y+8};
+        placed.push(box);
+      });
     }
     // The map camera can no longer orbit, so its only motion is the target easing, the
     // zoom tier easing and the fade.

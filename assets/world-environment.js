@@ -48,7 +48,7 @@
     ' vec3 reference=abs(surface.y)>0.9?vec3(0.0,0.0,1.0):vec3(0.0,1.0,0.0);',
     ' vec3 tangent=normalize(cross(reference,surface)); vec3 bitangent=cross(surface,tangent);',
     ' vec3 normal=normalize(surface+(tangent*wave.x+bitangent*wave.y)*(0.065+uWind*0.055+uRain*0.045));',
-    ' vec3 eye=normalize(cameraPosition-vWorld); float facing=max(dot(normal,eye),0.0);',
+    ' vec3 eye=isOrthographic?normalize(vec3(viewMatrix[0][2],viewMatrix[1][2],viewMatrix[2][2])):normalize(cameraPosition-vWorld); float facing=max(dot(normal,eye),0.0);',
     ' vec3 reflected=reflect(-eye,normal);',
     ' vec3 reflection=mix(uHorizon,uSkyTop,pow(clamp(reflected.y,0.0,1.0),0.6));',
     ' float fresnel=0.025+0.75*pow(1.0-facing,5.0);',
